@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EDWARD GAME</title>
+    <title>EDWARD Game - Ultra Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800;900&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -13,7 +13,7 @@
             overflow: hidden; user-select: none; -webkit-user-select: none; 
         }
 
-     
+        /* --- LOGIN OVERLAY --- */
         #loginOverlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at center, #1e1b4b 0%, #090d16 100%);
@@ -77,7 +77,7 @@
             display: inline-block; border: 1px solid rgba(251, 197, 49, 0.2);
         }
 
-        
+        /* --- LOADING OVERLAY --- */
         #loadingOverlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #090d16; z-index: 2000; display: flex; flex-direction: column;
@@ -97,7 +97,7 @@
         }
         .loading-bar { width: 0%; height: 100%; background: linear-gradient(90deg, #ff5252, #ffa502); transition: width 0.3s ease; }
 
-        
+        /* --- GAME HUD --- */
         #gameUI {
             position: absolute; top: 20px; left: 20px; right: 20px;
             display: flex; justify-content: space-between; align-items: center;
@@ -111,7 +111,7 @@
         }
         .score-badge { color: #fbc531; font-size: 18px; }
 
-   
+        /* --- CONTROLS --- */
         .ctrl { 
             position: absolute; bottom: 30px; width: 72px; height: 72px; 
             background: rgba(255,255,255,0.08); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -133,7 +133,7 @@
         }
         #jumpBtn:active { transform: scale(0.92); }
 
-     
+        /* --- GAME OVER MODAL --- */
         #gameOverModal { 
             position: fixed; top: 50%; left: 50%; 
             transform: translate(-50%, -45%) scale(0.9); 
@@ -158,7 +158,7 @@
 </head>
 <body>
 
-
+<!-- LOGIN OVERLAY -->
 <div id="loginOverlay">
     <div class="login-card">
         <h1>EDWARD GAME</h1>
@@ -185,7 +185,7 @@
     </div>
 </div>
 
-
+<!-- LOADING SCREEN -->
 <div id="loadingOverlay">
     <div class="loader-spinner"></div>
     <div style="font-weight: 800; letter-spacing: 1px; font-size: 14px;">MEMUAT DUNIA...</div>
@@ -194,20 +194,20 @@
     </div>
 </div>
 
-
+<!-- GAME HUD -->
 <div id="gameUI">
     <div class="hud-card">👤 <span id="displayPlayerName">Player</span></div>
     <div class="hud-card score-badge">🪙 <span id="score">0</span></div>
 </div>
 
-
+<!-- TOUCH CONTROLS -->
 <div id="leftBtn" class="ctrl">◀</div>
 <div id="rightBtn" class="ctrl">▶</div>
 <div id="jumpBtn">LOMPAT</div>
 
-
+<!-- GAME OVER MODAL -->
 <div id="gameOverModal">
-    <h2>KAMU KALAH</h2>
+    <h2>GAME OVER</h2>
     <p style="margin: 6px 0; color:#cbd5e1; font-size: 15px;">Skor Kamu: <b id="finalScore" style="color:#fbc531; font-size:20px;">0</b></p>
     <p style="margin: 0; font-size:13px; color:#94a3b8; font-weight:600;">Rekor Terbaik: <span id="bestScore" style="color:#fff;">0</span></p>
     <div class="btn-group">
@@ -219,7 +219,7 @@
 <canvas id="game"></canvas>
 
 <script>
-
+// --- AUDIO SYNTHESIZER ---
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx;
 function initAudio() {
@@ -240,13 +240,13 @@ function playSfx(freqStart, freqEnd, type, duration, vol) {
     } catch(e){}
 }
 
-
+// --- STATE MANAGEMENT ---
 let playerName = "Edward";
 let playerColor = "#ff5252";
 let highScore = localStorage.getItem('edward_highscore') || 0;
 document.getElementById('loginHighScore').innerText = highScore;
 
-
+// Color Selection
 document.querySelectorAll('.color-opt').forEach(opt => {
     opt.addEventListener('click', () => {
         document.querySelectorAll('.color-opt').forEach(o => o.classList.remove('selected'));
@@ -255,7 +255,7 @@ document.querySelectorAll('.color-opt').forEach(opt => {
     });
 });
 
-
+// START GAME WITH LOADING ANIMATION
 document.getElementById('startBtn').addEventListener('click', () => {
     let input = document.getElementById('playerNameInput').value.trim();
     if (input) playerName = input;
@@ -264,7 +264,7 @@ document.getElementById('startBtn').addEventListener('click', () => {
     initAudio();
     playSfx(400, 800, 'sine', 0.15, 0.1);
 
-   
+    // Fade out Login Overlay
     let loginOverlay = document.getElementById('loginOverlay');
     loginOverlay.style.opacity = '0';
     loginOverlay.style.transform = 'scale(0.95)';
@@ -272,7 +272,7 @@ document.getElementById('startBtn').addEventListener('click', () => {
     setTimeout(() => {
         loginOverlay.style.display = 'none';
         
-        
+        // Show Loading Overlay
         let loadingOverlay = document.getElementById('loadingOverlay');
         let loadingBar = document.getElementById('loadingBar');
         loadingOverlay.classList.add('active');
@@ -305,13 +305,13 @@ document.getElementById('changeUserBtn').addEventListener('click', () => {
     }, 10);
 });
 
-
+// --- CANVAS & HIGH-DPI SETUP (ANTI BURAM) ---
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 let dpr = 1;
 
 function resizeCanvas() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2); 
+    dpr = Math.min(window.devicePixelRatio || 1, 2); // Cap at 2 for performance
     canvas.width = window.innerWidth * dpr;
     canvas.height = window.innerHeight * dpr;
     canvas.style.width = window.innerWidth + 'px';
@@ -320,7 +320,7 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-
+// --- GAME VARIABLES & PHYSICS ---
 let p, platforms, particles, floatingTexts, stars, keys, score, cameraX, gameRunning, gameLoopRunning = false;
 let screenShake = 0;
 
@@ -340,7 +340,7 @@ function resetGame() {
         { x: 360, y: baseH - 240, w: 160, h: 24, coin: true, sparkTime: 0 }
     ];
     
-   
+    // Background stars
     stars = [];
     for(let i=0; i<60; i++) {
         stars.push({
@@ -418,6 +418,7 @@ function updatePlatforms() {
     platforms = platforms.filter(pt => pt.x + pt.w > cameraX - 300);
 }
 
+// --- CONTROLS INPUT ---
 window.addEventListener('keydown', e => {
     initAudio();
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
@@ -445,7 +446,7 @@ document.getElementById('respawnBtn').addEventListener('click', () => {
     requestAnimationFrame(gameLoop);
 });
 
-
+// --- GAME LOOP ---
 let coinAngle = 0;
 
 function gameLoop() {
@@ -457,7 +458,7 @@ function gameLoop() {
     let viewW = window.innerWidth;
     let viewH = window.innerHeight;
 
-    
+    // --- PHYSICS UPDATES ---
     if (keys.left) {
         p.vx -= 1.1;
         p.facing = -1;
@@ -465,16 +466,16 @@ function gameLoop() {
         p.vx += 1.1;
         p.facing = 1;
     } else {
-        p.vx *= 0.82; 
+        p.vx *= 0.82; // Inersia gesekan tanah
     }
     p.vx = Math.max(-7, Math.min(7, p.vx));
     p.x += p.vx;
 
-    
+    // Gravitasi
     p.vy += 0.75;
     p.y += p.vy;
 
-    
+    // Coyote & Jump Buffer
     if (p.grounded) {
         p.coyoteTimer = 8;
     } else {
@@ -488,27 +489,27 @@ function gameLoop() {
         p.jumpBufferTimer--;
     }
 
-    
+    // Melompat
     if (p.coyoteTimer > 0 && p.jumpBufferTimer > 0) {
         p.vy = -14.8;
         p.coyoteTimer = 0;
         p.jumpBufferTimer = 0;
-        p.scaleY = 1.4; p.scaleX = 0.65; 
+        p.scaleY = 1.4; p.scaleX = 0.65; // Stretch saat melompat
         playSfx(180, 480, 'square', 0.12, 0.08);
         createDust(p.x + p.w/2, p.y + p.h, 6);
     }
 
-  
+    // Smoothing Squash & Stretch
     p.scaleX += (1 - p.scaleX) * 0.15;
     p.scaleY += (1 - p.scaleY) * 0.15;
 
-    
+    // Smooth Camera Tracking
     let targetCamX = p.x - viewW * 0.32;
     cameraX += (targetCamX - cameraX) * 0.08;
 
     updatePlatforms();
 
-    
+    // Deteksi Tabrakan Platform
     let wasGrounded = p.grounded;
     p.grounded = false;
 
@@ -521,13 +522,13 @@ function gameLoop() {
             p.grounded = true;
 
             if (!wasGrounded) {
-                p.scaleY = 0.7; p.scaleX = 1.3; 
+                p.scaleY = 0.7; p.scaleX = 1.3; // Squash saat mendarat
                 createDust(p.x + p.w/2, p.y + p.h, 8);
                 if(p.vy > 10) triggerShake(4);
             }
         }
 
-     
+        // Ambil Koin
         if (pt.coin) {
             let coinX = pt.x + pt.w / 2;
             let coinY = pt.y - 25;
@@ -544,12 +545,12 @@ function gameLoop() {
         }
     });
 
-  
+    // Partikel debu saat berlari
     if (p.grounded && Math.abs(p.vx) > 3.5 && Math.random() < 0.35) {
         createDust(p.x + (p.facing === 1 ? 0 : p.w), p.y + p.h, 2);
     }
 
-  
+    // Jatuh ke Lava / Game Over
     if (p.y > viewH - 60) {
         gameRunning = false;
         triggerShake(12);
@@ -567,12 +568,12 @@ function gameLoop() {
         return;
     }
 
-   
+    // --- RENDERING (ANTI BURAM HIDPI) ---
     ctx.save();
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, viewW, viewH);
 
-  
+    // Camera Shake Matrix
     let shakeX = (Math.random() - 0.5) * screenShake;
     let shakeY = (Math.random() - 0.5) * screenShake;
     if (screenShake > 0) screenShake *= 0.88;
@@ -580,7 +581,7 @@ function gameLoop() {
     ctx.save();
     ctx.translate(shakeX, shakeY);
 
-    
+    // 1. LATAR BELAKANG (GRADIENT & STARS PARALLAX)
     let skyGrad = ctx.createLinearGradient(0, 0, 0, viewH);
     skyGrad.addColorStop(0, "#090d16");
     skyGrad.addColorStop(0.6, "#131b2e");
@@ -588,7 +589,7 @@ function gameLoop() {
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, viewW, viewH);
 
-   
+    // Stars Parallax
     stars.forEach(s => {
         ctx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`;
         let starX = (s.x - cameraX * s.speed) % viewW;
@@ -596,7 +597,7 @@ function gameLoop() {
         ctx.beginPath(); ctx.arc(starX, s.y, s.size, 0, Math.PI * 2); ctx.fill();
     });
 
-    
+    // Parallax Mountain Silhouettes
     ctx.fillStyle = "rgba(15, 23, 42, 0.6)";
     ctx.beginPath();
     ctx.moveTo(0, viewH);
@@ -606,17 +607,17 @@ function gameLoop() {
     }
     ctx.lineTo(viewW, viewH); ctx.fill();
 
-  
+    // 2. WORLD RENDERING (PARALLAX CAMERA)
     ctx.save();
     ctx.translate(-cameraX, 0);
 
-   
+    // Render Platforms
     platforms.forEach(pt => {
-        
+        // Platform Shadow
         ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
         ctx.beginPath(); ctx.roundRect(pt.x + 4, pt.y + 6, pt.w, pt.h, 8); ctx.fill();
 
-      
+        // Platform Main Body
         let platGrad = ctx.createLinearGradient(pt.x, pt.y, pt.x, pt.y + pt.h);
         platGrad.addColorStop(0, "#1e293b");
         platGrad.addColorStop(1, "#0f172a");
@@ -624,7 +625,7 @@ function gameLoop() {
         ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, pt.h, 8); ctx.fill();
         ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 1; ctx.stroke();
 
-      
+        // Glowing Top Edge (Neon Turf)
         let topGrad = ctx.createLinearGradient(pt.x, 0, pt.x + pt.w, 0);
         topGrad.addColorStop(0, "#38bdf8");
         topGrad.addColorStop(0.5, "#818cf8");
@@ -632,7 +633,7 @@ function gameLoop() {
         ctx.fillStyle = topGrad;
         ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, 4, [4, 4, 0, 0]); ctx.fill();
 
-        
+        // Render Coins
         if (pt.coin) {
             coinAngle += 0.015;
             let coinX = pt.x + pt.w / 2;
@@ -643,7 +644,7 @@ function gameLoop() {
             ctx.translate(coinX, coinY);
             ctx.scale(coinScale, 1);
             
-         
+            // Gold Outer Ring
             ctx.fillStyle = "#ffd700";
             ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = "#f39c12";
@@ -655,7 +656,7 @@ function gameLoop() {
         }
     });
 
-   
+    // Render Particles
     particles.forEach((pt, idx) => {
         if(pt.type === 'dust') {
             ctx.fillStyle = `rgba(255, 255, 255, ${pt.alpha})`;
@@ -671,7 +672,7 @@ function gameLoop() {
         if (pt.alpha <= 0) particles.splice(idx, 1);
     });
 
-     
+    // Render Floating Text FX (+10)
     floatingTexts.forEach((ft, idx) => {
         ctx.fillStyle = `rgba(251, 197, 49, ${ft.alpha})`;
         ctx.font = "900 16px 'Plus Jakarta Sans', sans-serif";
@@ -680,7 +681,7 @@ function gameLoop() {
         if (ft.alpha <= 0) floatingTexts.splice(idx, 1);
     });
 
-    
+    // --- RENDER CHARACTER (SUPER SMOOTH MODERN MASCOT) ---
     ctx.save();
     ctx.translate(p.x + p.w/2, p.y + p.h);
 
@@ -691,11 +692,11 @@ function gameLoop() {
     if (Math.abs(p.vx) > 0.2 && p.grounded) p.walkCycle += 0.25;
     let legSwing = Math.sin(p.walkCycle) * 7;
 
- 
+    // Shadow dibawah karakter
     ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.beginPath(); ctx.ellipse(0, 0, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
 
- 
+    // 1. Dynamic Cape/Scarf
     ctx.fillStyle = "#ff3838";
     ctx.beginPath();
     ctx.moveTo(-4, -28);
@@ -704,35 +705,35 @@ function gameLoop() {
     ctx.quadraticCurveTo(-10, -20, -4, -22);
     ctx.fill();
 
-   
+    // 2. Legs (Kaki)
     ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 5; ctx.lineCap = "round";
     ctx.beginPath();
     ctx.moveTo(-5, -12); ctx.lineTo(-5 + legSwing, 0);
     ctx.moveTo(5, -12); ctx.lineTo(5 - legSwing, 0);
     ctx.stroke();
 
- 
+    // 3. Body (Badan Capsule)
     ctx.fillStyle = playerColor;
     ctx.beginPath(); ctx.roundRect(-11, -34, 22, 24, 8); ctx.fill();
 
-  
+    // Inner Suit Detail
     ctx.fillStyle = "rgba(255,255,255,0.2)";
     ctx.beginPath(); ctx.roundRect(-7, -30, 14, 16, 5); ctx.fill();
 
- 
+    // 4. Head (Kepala Hero & Visor Neon)
     ctx.fillStyle = "#ffffff";
     ctx.beginPath(); ctx.arc(0, -38, 11, 0, Math.PI * 2); ctx.fill();
 
-   
+    // Visor/Eye (Mata Glowing Futuristik)
     ctx.fillStyle = "#0f172a";
     ctx.beginPath(); ctx.roundRect(1, -42, 9, 7, 3); ctx.fill();
     ctx.fillStyle = "#38bdf8";
     ctx.beginPath(); ctx.arc(5, -38, 2, 0, Math.PI * 2); ctx.fill();
 
-    ctx.restore(); 
-    ctx.restore(); 
+    ctx.restore(); // Restore Character matrix
+    ctx.restore(); // Restore Camera matrix
 
-   
+    // 3. ANIMATED LAVA AT BOTTOM
     let time = Date.now() * 0.004;
     let lavaGrad = ctx.createLinearGradient(0, viewH - 45, 0, viewH);
     lavaGrad.addColorStop(0, "#ff3838");
@@ -747,7 +748,7 @@ function gameLoop() {
     ctx.lineTo(viewW, viewH);
     ctx.fill();
 
-    
+    // Hot Lava Glow Top Edge
     ctx.strokeStyle = "#ff9f43"; ctx.lineWidth = 3;
     ctx.beginPath();
     for (let x = 0; x <= viewW + 20; x += 20) {
@@ -756,7 +757,7 @@ function gameLoop() {
     }
     ctx.stroke();
 
-    ctx.restore(); 
+    ctx.restore(); // Restore Base Canvas Scale
     requestAnimationFrame(gameLoop);
 }
 </script>
