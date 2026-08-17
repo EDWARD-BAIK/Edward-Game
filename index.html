@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>EDWARD Game</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body { 
+            margin: 0; padding: 0; 
+            background: #0f1015; 
+            touch-action: none; 
+            overflow: hidden; 
+            user-select: none; 
+            -webkit-user-select: none; 
+        }
+
+        
+        #loginOverlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000; transition: opacity 0.4s ease;
+        }
+        .login-card {
+            background: rgba(255, 255, 255, 0.07);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px; padding: 30px; width: 88%; max-width: 380px;
+            text-align: center; color: #fff;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        .login-card h1 {
+            margin: 0 0 10px; font-size: 32px; font-weight: 900;
+            background: linear-gradient(45deg, #ff4500, #ffaa00);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .login-card p { font-size: 14px; color: #cbd5e1; margin-bottom: 20px; }
+        .input-group { margin-bottom: 20px; text-align: left; }
+        .input-group label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 6px; font-weight: bold; }
+        .input-group input[type="text"] {
+            width: 100%; padding: 14px 18px; font-size: 16px; color: #fff;
+            background: rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 12px; outline: none; transition: 0.3s;
+        }
+        .input-group input[type="text"]:focus {
+            border-color: #ff4500; box-shadow: 0 0 12px rgba(255,69,0,0.4);
+        }
+        .color-picker { display: flex; gap: 10px; justify-content: center; margin-top: 8px; }
+        .color-opt {
+            width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
+            border: 3px solid transparent; transition: transform 0.2s;
+        }
+        .color-opt.selected { border-color: #fff; transform: scale(1.15); }
+
+        #startBtn {
+            width: 100%; padding: 16px; font-size: 18px; font-weight: bold; color: white;
+            background: linear-gradient(45deg, #ff4500, #ff8700);
+            border: none; border-radius: 12px; cursor: pointer;
+            box-shadow: 0 6px 20px rgba(255, 69, 0, 0.4); margin-top: 10px;
+        }
+        #startBtn:active { transform: scale(0.97); }
+
+        .high-score-tag {
+            margin-top: 15px; font-size: 13px; color: #ffd700; font-weight: bold;
+        }
+
+        
+        #gameUI {
+            position: absolute; top: 15px; left: 15px; right: 15px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 50; pointer-events: none;
+        }
+        .user-badge {
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+            padding: 8px 16px; border-radius: 20px; color: white;
+            border: 1px solid rgba(255,255,255,0.15); font-weight: bold; font-size: 14px;
+        }
+        .score-badge {
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+            padding: 8px 16px; border-radius: 20px; color: #ffd700;
+            border: 1px solid rgba(255,255,255,0.15); font-weight: 900; font-size: 16px;
+        }
+
+        
+        .ctrl { 
+            position: absolute; bottom: 25px; width: 75px; height: 75px; 
+            background: rgba(255,255,255,0.2); backdrop-filter: blur(10px);
+            border-radius: 50%; font-size: 28px; color: white; z-index: 100; 
+            border: 2px solid rgba(255,255,255,0.4); display: flex; 
+            align-items: center; justify-content: center; cursor: pointer;
+        }
+        .ctrl:active { background: rgba(255,255,255,0.45); }
+        #leftBtn { left: 25px; } 
+        #rightBtn { left: 115px; }
+        #jumpBtn { 
+            position: absolute; bottom: 25px; right: 25px; width: 85px; height: 85px; 
+            border-radius: 50%; background: linear-gradient(135deg, #ff4500, #ff7700); 
+            color: white; font-size: 15px; font-weight: 900; z-index: 100; 
+            border: 3px solid #fff; display: flex; align-items: center; 
+            justify-content: center; box-shadow: 0 6px 20px rgba(255, 69, 0, 0.4);
+        }
+        #jumpBtn:active { transform: scale(0.93); }
+
+        
+        #gameOverModal { 
+            position: absolute; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%) scale(0.8); 
+            background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(12px);
+            padding: 30px; border-radius: 24px; text-align: center; color: white;
+            display: none; opacity: 0; z-index: 999; width: 85%; max-width: 320px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #gameOverModal.active { display: block; opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        #gameOverModal h2 { color: #ff4500; margin: 0 0 10px; font-size: 28px; }
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .btn-modal {
+            flex: 1; padding: 12px; font-weight: bold; border-radius: 10px; border: none; cursor: pointer;
+        }
+        #respawnBtn { background: #ff4500; color: white; }
+        #changeUserBtn { background: rgba(255,255,255,0.15); color: white; }
+    </style>
+</head>
+<body>
+
+
+<div id="loginOverlay">
+    <div class="login-card">
+        <h1>EDWARD GAME</h1>
+        <p>Petualangan Platformer Seru</p>
+        
+        <div class="input-group">
+            <label for="playerNameInput">NAMA PEMAIN</label>
+            <input type="text" id="playerNameInput" placeholder="Ketik nama kamu..." maxlength="12" value="Edward">
+        </div>
+
+        <div class="input-group">
+            <label>WARNA KARAKTER</label>
+            <div class="color-picker" id="colorPicker">
+                <div class="color-opt selected" data-color="#ff4500" style="background:#ff4500;"></div>
+                <div class="color-opt" data-color="#00d2d3" style="background:#00d2d3;"></div>
+                <div class="color-opt" data-color="#5f27cd" style="background:#5f27cd;"></div>
+                <div class="color-opt" data-color="#ff9f43" style="background:#ff9f43;"></div>
+                <div class="color-opt" data-color="#10ac84" style="background:#10ac84;"></div>
+            </div>
+        </div>
+
+        <button id="startBtn">MAIN</button>
+        <div class="high-score-tag">🏆 Rekor Tertinggi: <span id="loginHighScore">0</span></div>
+    </div>
+</div>
+
+<!-- GAME HUD -->
+<div id="gameUI">
+    <div class="user-badge">👤 <span id="displayPlayerName">Player</span></div>
+    <div class="score-badge">🪙 <span id="score">0</span></div>
+</div>
+
+<!-- KONTROL SCREEN HP -->
+<div id="leftBtn" class="ctrl">◀</div>
+<div id="rightBtn" class="ctrl">▶</div>
+<div id="jumpBtn">LOMPAT</div>
+
+<!-- GAME OVER MODAL -->
+<div id="gameOverModal">
+    <h2>GAME OVER</h2>
+    <p style="margin: 5px 0; color:#cbd5e1;">Skor Kamu: <b id="finalScore" style="color:#ffd700;">0</b></p>
+    <p style="margin: 0; font-size:12px; color:#94a3b8;">Rekor Terbaik: <span id="bestScore">0</span></p>
+    <div class="btn-group">
+        <button id="respawnBtn" class="btn-modal">MAIN LAGI</button>
+        <button id="changeUserBtn" class="btn-modal">MENU</button>
+    </div>
+</div>
+
+<canvas id="game"></canvas>
+
+<script>
+
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+let audioCtx;
+function initAudio() {
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playSfx(freqStart, freqEnd, type, duration, vol) {
+    if (!audioCtx) return;
+    let osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freqStart, audioCtx.currentTime);
+    if(freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, audioCtx.currentTime + duration);
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+}
+
+
+let playerName = "Edward";
+let playerColor = "#ff4500";
+let highScore = localStorage.getItem('edward_highscore') || 0;
+document.getElementById('loginHighScore').innerText = highScore;
+
+
+document.querySelectorAll('.color-opt').forEach(opt => {
+    opt.addEventListener('click', (e) => {
+        document.querySelectorAll('.color-opt').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        playerColor = opt.getAttribute('data-color');
+    });
+});
+
+
+document.getElementById('startBtn').addEventListener('click', () => {
+    let input = document.getElementById('playerNameInput').value.trim();
+    if (input) playerName = input;
+    document.getElementById('displayPlayerName').innerText = playerName;
+    
+    initAudio();
+    playSfx(400, 800, 'sine', 0.15, 0.1);
+
+    let overlay = document.getElementById('loginOverlay');
+    overlay.style.opacity = '0';
+    setTimeout(() => overlay.style.display = 'none', 400);
+
+    resetGame();
+    if(!gameLoopRunning) {
+        gameLoopRunning = true;
+        requestAnimationFrame(gameLoop);
+    }
+});
+
+document.getElementById('changeUserBtn').addEventListener('click', () => {
+    document.getElementById('gameOverModal').classList.remove('active');
+    let overlay = document.getElementById('loginOverlay');
+    overlay.style.display = 'flex';
+    setTimeout(() => overlay.style.opacity = '1', 10);
+});
+
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+
+let p, platforms, particles, floatingTexts, keys, score, cameraX, gameRunning, gameLoopRunning = false;
+
+function resetGame() {
+    p = { 
+        x: 100, y: 200, w: 26, h: 44, 
+        vx: 0, vy: 0, 
+        grounded: false, 
+        scaleX: 1, scaleY: 1, 
+        walkCycle: 0, facing: 1,
+        coyoteTimer: 0, jumpBufferTimer: 0
+    };
+    platforms = [
+        { x: 50, y: canvas.height - 180, w: 240, h: 25, coin: false },
+        { x: 340, y: canvas.height - 240, w: 150, h: 25, coin: true }
+    ];
+    particles = [];
+    floatingTexts = [];
+    keys = { left: false, right: false, jumpPressed: false };
+    score = 0;
+    cameraX = 0;
+    gameRunning = true;
+    document.getElementById('score').innerText = '0';
+    document.getElementById('gameOverModal').classList.remove('active');
+}
+
+function createDust(x, y, count = 5) {
+    for(let i=0; i<count; i++) {
+        particles.push({
+            type: 'dust',
+            x: x + (Math.random()*16 - 8),
+            y: y,
+            vx: Math.random()*4 - 2,
+            vy: -Math.random()*2 - 0.5,
+            size: Math.random()*4 + 2,
+            alpha: 1
+        });
+    }
+}
+
+function updatePlatforms() {
+    let lastPlat = platforms[platforms.length - 1];
+    while (lastPlat.x < cameraX + canvas.width + 300) {
+        let newX = lastPlat.x + 150 + Math.random() * 90;
+        let minY = Math.max(180, lastPlat.y - 90);
+        let maxY = Math.min(canvas.height - 150, lastPlat.y + 90);
+        let newY = minY + Math.random() * (maxY - minY);
+        platforms.push({ x: newX, y: newY, w: 120 + Math.random() * 60, h: 25, coin: Math.random() > 0.2 });
+        lastPlat = platforms[platforms.length - 1];
+    }
+    platforms = platforms.filter(pt => pt.x + pt.w > cameraX - 200);
+}
+
+
+window.addEventListener('keydown', e => {
+    initAudio();
+    if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
+    if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
+    if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') keys.jumpPressed = true;
+});
+window.addEventListener('keyup', e => {
+    if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
+    if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = false;
+});
+
+const setupTouch = (id, key) => {
+    const el = document.getElementById(id);
+    el.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); keys[key] = true; });
+    el.addEventListener('pointerup', e => { e.preventDefault(); keys[key] = false; });
+    el.addEventListener('pointerleave', e => { e.preventDefault(); keys[key] = false; });
+};
+setupTouch('leftBtn', 'left');
+setupTouch('rightBtn', 'right');
+document.getElementById('jumpBtn').addEventListener('pointerdown', e => {
+    e.preventDefault(); initAudio(); keys.jumpPressed = true;
+});
+document.getElementById('respawnBtn').addEventListener('click', () => {
+    resetGame();
+    requestAnimationFrame(gameLoop);
+});
+
+
+let coinAngle = 0;
+
+function gameLoop() {
+    if (!gameRunning) {
+        gameLoopRunning = false;
+        return;
+    }
+
+    
+    
+    if (keys.left) {
+        p.vx -= 1.2;
+        p.facing = -1;
+    } else if (keys.right) {
+        p.vx += 1.2;
+        p.facing = 1;
+    } else {
+        p.vx *= 0.82; // Inersia halus saat berhenti
+    }
+    p.vx = Math.max(-6.5, Math.min(6.5, p.vx)); // Max Speed
+    p.x += p.vx;
+
+    
+    p.vy += 0.75;
+    p.y += p.vy;
+
+    
+    if (p.grounded) {
+        p.coyoteTimer = 8; // Toleransi 8 frame setelah keluar dari pinggiran platform
+    } else {
+        p.coyoteTimer--;
+    }
+
+    if (keys.jumpPressed) {
+        p.jumpBufferTimer = 8; // Toleransi 8 frame menekan sebelum mendarat
+        keys.jumpPressed = false;
+    } else {
+        p.jumpBufferTimer--;
+    }
+
+    
+    if (p.coyoteTimer > 0 && p.jumpBufferTimer > 0) {
+        p.vy = -14.5;
+        p.coyoteTimer = 0;
+        p.jumpBufferTimer = 0;
+        p.scaleY = 1.35; p.scaleX = 0.7; // Squash saat lompat
+        playSfx(150, 400, 'square', 0.12, 0.08);
+        createDust(p.x + p.w/2, p.y + p.h, 6);
+    }
+
+    
+    p.scaleX += (1 - p.scaleX) * 0.12;
+    p.scaleY += (1 - p.scaleY) * 0.12;
+
+    
+    let targetCamX = p.x - canvas.width * 0.35;
+    cameraX += (targetCamX - cameraX) * 0.08;
+
+    updatePlatforms();
+
+    
+    let wasGrounded = p.grounded;
+    p.grounded = false;
+
+    platforms.forEach(pt => {
+        if (p.x + p.w > pt.x && p.x < pt.x + pt.w && 
+            p.y + p.h >= pt.y && p.y + p.h <= pt.y + 18 && p.vy > 0) {
+            
+            p.y = pt.y - p.h;
+            p.vy = 0;
+            p.grounded = true;
+
+            if (!wasGrounded) {
+                p.scaleY = 0.75; p.scaleX = 1.25; // Squash saat mendarat
+                createDust(p.x + p.w/2, p.y + p.h, 8);
+            }
+        }
+
+        
+        if (pt.coin) {
+            let coinX = pt.x + pt.w / 2;
+            let coinY = pt.y - 25;
+            let dx = (p.x + p.w/2) - coinX;
+            let dy = (p.y + p.h/2) - coinY;
+            if (Math.sqrt(dx*dx + dy*dy) < 28) {
+                pt.coin = false;
+                score += 10;
+                document.getElementById('score').innerText = score;
+                playSfx(800, 1200, 'sine', 0.2, 0.12);
+
+                floatingTexts.push({ x: coinX, y: coinY, text: "+10", alpha: 1 });
+            }
+        }
+    });
+
+    
+    if (p.grounded && Math.abs(p.vx) > 3 && Math.random() < 0.3) {
+        createDust(p.x + (p.facing === 1 ? 0 : p.w), p.y + p.h, 2);
+    }
+
+    
+    if (p.y > canvas.height - 70) {
+        gameRunning = false;
+        playSfx(200, 60, 'sawtooth', 0.4, 0.15);
+
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('edward_highscore', highScore);
+            document.getElementById('loginHighScore').innerText = highScore;
+        }
+
+        document.getElementById('finalScore').innerText = score;
+        document.getElementById('bestScore').innerText = highScore;
+        document.getElementById('gameOverModal').classList.add('active');
+        return;
+    }
+
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    
+    let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    skyGrad.addColorStop(0, "#0f172a");
+    skyGrad.addColorStop(0.6, "#1e293b");
+    skyGrad.addColorStop(1, "#334155");
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    
+    ctx.save();
+    ctx.translate(-cameraX, 0);
+
+    
+    platforms.forEach(pt => {
+        ctx.fillStyle = "#334155";
+        ctx.fillRect(pt.x, pt.y, pt.w, pt.h);
+        ctx.fillStyle = "#38bdf8"; // Rumput neon modern
+        ctx.fillRect(pt.x, pt.y, pt.w, 5);
+
+        
+        if (pt.coin) {
+            coinAngle += 0.03;
+            let scaleC = Math.cos(coinAngle);
+            ctx.save();
+            ctx.translate(pt.x + pt.w/2, pt.y - 25);
+            ctx.scale(scaleC, 1);
+            ctx.fillStyle = "#ffd700";
+            ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "#b8860b"; ctx.lineWidth = 2; ctx.stroke();
+            ctx.restore();
+        }
+    });
+
+    
+    particles.forEach((pt, idx) => {
+        if(pt.type === 'dust') {
+            ctx.fillStyle = `rgba(255, 255, 255, ${pt.alpha})`;
+            ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI*2); ctx.fill();
+            pt.x += pt.vx; pt.y += pt.vy; pt.alpha -= 0.04;
+        }
+        if (pt.alpha <= 0) particles.splice(idx, 1);
+    });
+
+    
+    floatingTexts.forEach((ft, idx) => {
+        ctx.fillStyle = `rgba(255, 215, 0, ${ft.alpha})`;
+        ctx.font = "900 16px sans-serif";
+        ctx.fillText(ft.text, ft.x - 10, ft.y);
+        ft.y -= 1.5; ft.alpha -= 0.03;
+        if (ft.alpha <= 0) floatingTexts.splice(idx, 1);
+    });
+
+    
+    ctx.save();
+    ctx.translate(p.x + p.w/2, p.y + p.h);
+
+    
+    let tilt = p.vx * 0.03;
+    ctx.rotate(tilt);
+    ctx.scale(p.scaleX * p.facing, p.scaleY);
+
+    if (Math.abs(p.vx) > 0.2 && p.grounded) p.walkCycle += 0.2;
+    let legSwing = Math.sin(p.walkCycle) * 7;
+
+    
+    ctx.fillStyle = "#e11d48";
+    ctx.beginPath();
+    ctx.moveTo(-4, -32);
+    ctx.quadraticCurveTo(-15 - p.vx * 2, -28 + Math.sin(Date.now()*0.01)*4, -18 - p.vx * 3, -15);
+    ctx.quadraticCurveTo(-10, -22, -4, -26);
+    ctx.fill();
+
+    
+    ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 4; ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-4, -14); ctx.lineTo(-4 + legSwing, 0);
+    ctx.moveTo(4, -14); ctx.lineTo(4 - legSwing, 0);
+    ctx.stroke();
+
+    
+    ctx.fillStyle = playerColor;
+    ctx.beginPath();
+    ctx.roundRect(-10, -36, 20, 24, 6);
+    ctx.fill();
+
+    
+    ctx.fillStyle = "#ffddb0";
+    ctx.beginPath(); ctx.arc(0, -42, 10, 0, Math.PI * 2); ctx.fill();
+
+    
+    ctx.fillStyle = "#0f172a";
+    ctx.beginPath(); ctx.arc(4, -43, 2.5, 0, Math.PI * 2); ctx.fill();
+
+    ctx.restore(); 
+
+    ctx.restore(); 
+
+    
+    let time = Date.now() * 0.003;
+    ctx.fillStyle = "#ef4444";
+    ctx.beginPath(); ctx.moveTo(0, canvas.height);
+    for (let x = 0; x <= canvas.width; x += 20) {
+        let y = canvas.height - 35 + Math.sin(x * 0.02 + time) * 6;
+        ctx.lineTo(x, y);
+    }
+    ctx.lineTo(canvas.width, canvas.height);
+    ctx.fill();
+
+    requestAnimationFrame(gameLoop);
+}
+</script>
+</body>
+</html>
