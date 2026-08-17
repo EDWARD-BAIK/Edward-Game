@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>EDWARD Parkour Game HD</title>
+    <title>EDWARD Game</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
         body, html { 
@@ -16,7 +16,7 @@
             -webkit-user-select: none; 
         }
 
-        /* --- LOADING OVERLAY --- */
+    
         #loadingOverlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #090a0f; z-index: 2000;
@@ -39,7 +39,7 @@
         }
         .loading-status { color: #94a3b8; font-size: 12px; margin-top: 10px; font-weight: 600; }
 
-        /* --- MENU LOGIN OVERLAY --- */
+        
         #loginOverlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at center, #1e1b4b 0%, #090a0f 100%);
@@ -95,7 +95,7 @@
             display: inline-block; border: 1px solid rgba(255, 215, 0, 0.2);
         }
 
-        /* --- HUD GAME UI --- */
+   
         #gameUI {
             position: absolute; top: 18px; left: 18px; right: 18px;
             display: flex; justify-content: space-between; align-items: center;
@@ -109,7 +109,7 @@
         }
         .score-badge { color: #ffd700; font-weight: 900; }
 
-        /* --- CONTROLS TOMBOL HP --- */
+        
         .ctrl { 
             position: absolute; bottom: 25px; width: 70px; height: 70px; 
             background: rgba(255,255,255,0.15);
@@ -132,7 +132,7 @@
         }
         #jumpBtn:active { transform: scale(0.92); }
 
-        /* --- GAME OVER MODAL --- */
+    
         #gameOverModal { 
             position: absolute; top: 50%; left: 50%; 
             transform: translate(-50%, -50%) scale(0.85); 
@@ -155,7 +155,7 @@
 </head>
 <body>
 
-<!-- LAYAR LOADING -->
+
 <div id="loadingOverlay">
     <div class="loader-title">EDWARD GAME</div>
     <div class="progress-box">
@@ -164,15 +164,15 @@
     <div class="loading-status" id="loadingStatus">Memuat aset...</div>
 </div>
 
-<!-- MENU LOGIN -->
+
 <div id="loginOverlay">
     <div class="login-card">
         <h1>EDWARD GAME</h1>
-        <p>Parkur Ekstrem HD</p>
+        <p>Parkur Seru</p>
         
         <div class="input-group">
             <label for="playerNameInput">NAMA PEMAIN</label>
-            <input type="text" id="playerNameInput" placeholder="Ketik nama kamu..." maxlength="12" value="Edward">
+            <input type="text" id="playerNameInput" placeholder="Ketik nama kamu..." maxlength="12" value="">
         </div>
 
         <div class="input-group">
@@ -186,25 +186,25 @@
             </div>
         </div>
 
-        <button id="startBtn">MAIN NOW</button>
+        <button id="startBtn">MAINKAN SEKARANG</button>
         <div class="high-score-tag">🏆 Rekor: <span id="loginHighScore">0</span></div>
     </div>
 </div>
 
-<!-- GAME UI -->
+
 <div id="gameUI">
     <div class="hud-badge">👤 <span id="displayPlayerName">Player</span></div>
     <div class="hud-badge score-badge">🪙 <span id="score">0</span></div>
 </div>
 
-<!-- KONTROL MOBIL -->
+
 <div id="leftBtn" class="ctrl">◀</div>
 <div id="rightBtn" class="ctrl">▶</div>
 <div id="jumpBtn">LOMPAT</div>
 
-<!-- MODAL GAME OVER -->
+
 <div id="gameOverModal">
-    <h2>GAMEOVER</h2>
+    <h2>KAMU KALAH</h2>
     <p style="margin: 5px 0; color:#cbd5e1;">Skor Kamu: <b id="finalScore" style="color:#ffd700; font-size:18px;">0</b></p>
     <p style="margin: 0; font-size:13px; color:#94a3b8;">Rekor Terbaik: <span id="bestScore">0</span></p>
     <div class="btn-group">
@@ -216,7 +216,7 @@
 <canvas id="game"></canvas>
 
 <script>
-// --- AUDIO SYSTEM ---
+
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx;
 function initAudio() {
@@ -237,14 +237,13 @@ function playSfx(freqStart, freqEnd, type, duration, vol) {
     } catch(e){}
 }
 
-// --- STATE MANAGEMENT ---
 let playerName = "Edward";
 let playerColor = "#ff4500";
 let highScore = localStorage.getItem('edward_highscore') || 0;
 let animId; 
 document.getElementById('loginHighScore').innerText = highScore;
 
-// Simulasi Loading Screen
+
 window.addEventListener('load', () => {
     let bar = document.getElementById('progressBar');
     let status = document.getElementById('loadingStatus');
@@ -304,7 +303,7 @@ document.getElementById('changeUserBtn').addEventListener('click', () => {
     setTimeout(() => overlay.style.opacity = '1', 10);
 });
 
-// --- CANVAS SETUP ---
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 let dpr = 1;
@@ -324,7 +323,7 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// --- GAME VARIABLES ---
+
 let p, platforms, particles, floatingTexts, keys, score, cameraX, gameRunning;
 
 function resetGame() {
@@ -367,40 +366,39 @@ function createDust(x, y, count = 5) {
     }
 }
 
-// [FIX] Generasi Parkur Disesuaikan Dengan Lompatan Secara Matematika
+
 function updatePlatforms() {
     let lastPlat = platforms[platforms.length - 1];
     while (lastPlat.x < cameraX + viewportW + 300) {
         
-        // Celah antar platform (Maksimal lari di udara sekitar 180-220px)
-        // Kita set celah aman namun menantang antara 60px hingga 160px
+        
+      
         let gap = 60 + Math.random() * 100;
         let newX = lastPlat.x + lastPlat.w + gap; 
         
-        // Ketinggian disesuaikan berdasarkan seberapa jauh celahnya
-        // Kalau gap jauh, naik maksimal sedikit saja biar tetep nyampe
+      
         let maxJumpUp = gap > 120 ? 20 : 80; 
-        let maxDropDown = 110; // Boleh turun bebas
+        let maxDropDown = 110; 
 
-        // Kalkulasi Y Platform baru
+        
         let yOffset = (Math.random() * (maxJumpUp + maxDropDown)) - maxJumpUp;
         let newY = lastPlat.y + yOffset;
         
-        // Mencegah platform tembus atap atau masuk lava
+        
         newY = Math.max(160, Math.min(viewportH - 130, newY));
         
-        // Lebar Platform dibuat lebih acak
+       
         let newW = 70 + Math.random() * 80; 
         
         platforms.push({ x: newX, y: newY, w: newW, h: 22, coin: Math.random() > 0.25 });
         lastPlat = platforms[platforms.length - 1];
     }
     
-    // Hapus platform lama
+  
     platforms = platforms.filter(pt => pt.x + pt.w > cameraX - 200);
 }
 
-// --- CONTROLS LISTENERS ---
+
 window.addEventListener('keydown', e => {
     initAudio();
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
@@ -427,7 +425,7 @@ document.getElementById('jumpBtn').addEventListener('pointerdown', e => {
 
 let coinAngle = 0;
 
-// --- MAIN GAME LOOP ---
+
 function gameLoop() {
     if (!gameRunning) return;
 
@@ -447,7 +445,7 @@ function gameLoop() {
     p.vx = Math.max(-6, Math.min(6, p.vx));
     p.x += p.vx;
 
-    // [FIX] Simpan Posisi Y Sebelum Gravitasi untuk Deteksi Anti-Tembus
+    
     p.lastY = p.y; 
 
     // Gravitasi
@@ -481,7 +479,7 @@ function gameLoop() {
 
     updatePlatforms();
 
-    // --- [FIX] DETEKSI TUMBUKAN ANTI-TEMBUS ---
+  
     let wasGrounded = p.grounded;
     p.grounded = false;
 
@@ -489,14 +487,14 @@ function gameLoop() {
         let isInsideX = p.x + p.w > pt.x && p.x < pt.x + pt.w;
         let isFalling = p.vy > 0;
         
-        // Membandingkan posisi tapak kaki frame lalu dengan frame sekarang
+       
         let previousBottom = p.lastY + p.h;
         let currentBottom = p.y + p.h;
 
-        // Jika X pas, sedang jatuh, Kaki kemarin di atas pijakan (+ toleransi), dan kaki sekarang menembus pijakan
+       
         if (isInsideX && isFalling && previousBottom <= pt.y + 12 && currentBottom >= pt.y) {
             
-            p.y = pt.y - p.h; // Jepit ke atas platform persis
+            p.y = pt.y - p.h; 
             p.vy = 0;
             p.grounded = true;
 
@@ -507,7 +505,7 @@ function gameLoop() {
             }
         }
 
-        // Koin Pick-up
+        
         if (pt.coin) {
             let coinX = pt.x + pt.w / 2;
             let coinY = pt.y - 24;
@@ -527,7 +525,7 @@ function gameLoop() {
         createDust(p.x + (p.facing === 1 ? 0 : p.w), p.y + p.h, 1);
     }
 
-    // Mati Jatuh
+   
     if (p.y > viewportH - 60) {
         gameRunning = false;
         playSfx(220, 50, 'sawtooth', 0.35, 0.15);
@@ -544,7 +542,7 @@ function gameLoop() {
         return; 
     }
 
-    // --- RENDERING GRAFIS ---
+    
     ctx.clearRect(0, 0, viewportW, viewportH);
 
     let skyGrad = ctx.createLinearGradient(0, 0, 0, viewportH);
@@ -557,7 +555,7 @@ function gameLoop() {
     ctx.save();
     ctx.translate(-cameraX, 0);
 
-    // Platform
+  
     platforms.forEach(pt => {
         ctx.fillStyle = "rgba(0,0,0,0.25)";
         ctx.fillRect(pt.x + 4, pt.y + 6, pt.w, pt.h);
@@ -598,7 +596,7 @@ function gameLoop() {
         if (ft.alpha <= 0) floatingTexts.splice(idx, 1);
     });
 
-    // --- KARAKTER RENDER ---
+    
     ctx.save();
     ctx.translate(p.x + p.w/2, p.y + p.h);
 
