@@ -48,7 +48,6 @@
         }
         .login-card {
             background: rgba(255, 255, 255, 0.05);
-            /* Efek blur diturunkan intensitasnya di login agar tidak lag */
             backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.15);
             border-radius: 28px; padding: 32px 28px; width: 88%; max-width: 380px;
@@ -103,7 +102,7 @@
             z-index: 50; pointer-events: none;
         }
         .hud-badge {
-            background: rgba(15, 23, 42, 0.85); /* Dihapus efek blur agar tidak lag saat main */
+            background: rgba(15, 23, 42, 0.85); 
             padding: 10px 18px; border-radius: 20px; color: white;
             border: 1px solid rgba(255,255,255,0.15); font-weight: 700; font-size: 14px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
@@ -113,7 +112,7 @@
         /* --- CONTROLS TOMBOL HP --- */
         .ctrl { 
             position: absolute; bottom: 25px; width: 70px; height: 70px; 
-            background: rgba(255,255,255,0.15); /* Dihapus efek blur */
+            background: rgba(255,255,255,0.15);
             border-radius: 50%; font-size: 24px; color: white; z-index: 100; 
             border: 1.5px solid rgba(255,255,255,0.3); display: flex; 
             align-items: center; justify-content: center; cursor: pointer;
@@ -217,7 +216,7 @@
 <canvas id="game"></canvas>
 
 <script>
-// --- AUDIO SYSTEM (WebAudio API) ---
+// --- AUDIO SYSTEM ---
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx;
 function initAudio() {
@@ -242,6 +241,7 @@ function playSfx(freqStart, freqEnd, type, duration, vol) {
 let playerName = "Edward";
 let playerColor = "#ff4500";
 let highScore = localStorage.getItem('edward_highscore') || 0;
+let animId; // [FIX BUG 1] Variabel untuk mengamankan looping game
 document.getElementById('loginHighScore').innerText = highScore;
 
 // Simulasi Loading Screen
@@ -249,12 +249,10 @@ window.addEventListener('load', () => {
     let bar = document.getElementById('progressBar');
     let status = document.getElementById('loadingStatus');
     let progress = 0;
-    
     let interval = setInterval(() => {
         progress += Math.floor(Math.random() * 25) + 15;
         if(progress > 100) progress = 100;
         bar.style.width = progress + '%';
-        
         if (progress === 100) {
             clearInterval(interval);
             status.innerText = "Siap!";
@@ -280,8 +278,8 @@ document.querySelectorAll('.color-opt').forEach(opt => {
     });
 });
 
-// Start Button Event
-document.getElementById('startBtn').addEventListener('click', () => {
+// [FIX BUG 1] Fungsi start game yang bersih dari tabrakan loop
+function startGame() {
     let input = document.getElementById('playerNameInput').value.trim();
     if (input) playerName = input;
     document.getElementById('displayPlayerName').innerText = playerName;
@@ -294,12 +292,15 @@ document.getElementById('startBtn').addEventListener('click', () => {
     setTimeout(() => overlay.style.display = 'none', 400);
 
     resetGame();
-    if(!gameLoopRunning) {
-        gameLoopRunning = true;
-        requestAnimationFrame(gameLoop);
-    }
-});
+    cancelAnimationFrame(animId); // Bersihkan loop sebelumnya
+    gameLoop();
+}
 
+// Tombol Mulai
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('respawnBtn').addEventListener('click', startGame);
+
+// Tombol Ke Menu
 document.getElementById('changeUserBtn').addEventListener('click', () => {
     document.getElementById('gameOverModal').classList.remove('active');
     let overlay = document.getElementById('loginOverlay');
@@ -307,14 +308,13 @@ document.getElementById('changeUserBtn').addEventListener('click', () => {
     setTimeout(() => overlay.style.opacity = '1', 10);
 });
 
-// --- CANVAS SETUP (HIGH-DPI / RETINA OPTIMIZED) ---
+// --- CANVAS SETUP ---
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 let dpr = 1;
 let viewportW = window.innerWidth;
 let viewportH = window.innerHeight;
 
-// [FIX LAG] Memindah deteksi window.innerWidth HANYA dipanggil saat resize
 function resizeCanvas() {
     viewportW = window.innerWidth;
     viewportH = window.innerHeight;
@@ -329,7 +329,7 @@ window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
 // --- GAME VARIABLES ---
-let p, platforms, particles, floatingTexts, keys, score, cameraX, gameRunning, gameLoopRunning = false;
+let p, platforms, particles, floatingTexts, keys, score, cameraX, gameRunning;
 
 function resetGame() {
     p = { 
@@ -370,16 +370,27 @@ function createDust(x, y, count = 5) {
     }
 }
 
+// [FIX BUG 3] Platform Generator Jauh Lebih Menantang (Berjarak)
 function updatePlatforms() {
     let lastPlat = platforms[platforms.length - 1];
     while (lastPlat.x < cameraX + viewportW + 300) {
-        let newX = lastPlat.x + 140 + Math.random() * 100;
-        let minY = Math.max(160, lastPlat.y - 85);
-        let maxY = Math.min(viewportH - 140, lastPlat.y + 85);
+        
+        // Jarak gap (celah maut) diukur DARI ujung platform sebelumnya, bukan dari awalnya
+        let gap = 90 + Math.random() * 80; // Celah kosong antar platform (90px sampai 170px)
+        let newX = lastPlat.x + lastPlat.w + gap; 
+        
+        // Variasi Tinggi Platform (Y)
+        let minY = Math.max(160, lastPlat.y - 110);
+        let maxY = Math.min(viewportH - 130, lastPlat.y + 110);
         let newY = minY + Math.random() * (maxY - minY);
-        platforms.push({ x: newX, y: newY, w: 110 + Math.random() * 70, h: 22, coin: Math.random() > 0.25 });
+        
+        // Lebar Platform dibuat lebih variatif (Kadang lebar, kadang sempit banget)
+        let newW = 80 + Math.random() * 70; // 80px sampai 150px
+        
+        platforms.push({ x: newX, y: newY, w: newW, h: 22, coin: Math.random() > 0.25 });
         lastPlat = platforms[platforms.length - 1];
     }
+    // Bersihkan platform yang sudah terlewat jauh di belakang agar ringan
     platforms = platforms.filter(pt => pt.x + pt.w > cameraX - 200);
 }
 
@@ -408,23 +419,15 @@ document.getElementById('jumpBtn').addEventListener('pointerdown', e => {
     e.preventDefault(); initAudio(); keys.jumpPressed = true;
 });
 
-document.getElementById('respawnBtn').addEventListener('click', () => {
-    resetGame();
-    requestAnimationFrame(gameLoop);
-});
-
 let coinAngle = 0;
 
 // --- MAIN GAME LOOP ---
 function gameLoop() {
-    if (!gameRunning) {
-        gameLoopRunning = false;
-        return;
-    }
+    if (!gameRunning) return;
 
-    // --- FISIKA & PERGERAKAN KARAKTER ---
-    const accel = p.grounded ? 0.7 : 0.4;
-    const friction = p.grounded ? 0.82 : 0.90;
+    // [FIX BUG 2] Kecepatan Lari dan Fisika Disesuaikan
+    const accel = p.grounded ? 0.6 : 0.35; // Akselerasi tidak terlalu gila
+    const friction = p.grounded ? 0.82 : 0.90; // Supaya ada rem alami saat gak dipencet
 
     if (keys.left) {
         p.vx -= accel;
@@ -436,10 +439,11 @@ function gameLoop() {
         p.vx *= friction;
     }
     
-    p.vx = Math.max(-7, Math.min(7, p.vx));
+    // Kecepatan Max diturunkan jadi 6 (sebelumnya 7) agar tidak serasa ngebut terbang
+    p.vx = Math.max(-6, Math.min(6, p.vx));
     p.x += p.vx;
 
-    // [FIX LOMPATAN KEPENDIKAN] Gravitasi kembali seperti semula
+    // Gravitasi & Lompatan
     p.vy += 0.75;
     p.y += p.vy;
 
@@ -454,27 +458,26 @@ function gameLoop() {
         p.jumpBufferTimer--;
     }
 
-    // [FIX LOMPATAN KEPENDIKAN] Kembalikan daya lompat (-14.5) persis original
     if (p.coyoteTimer > 0 && p.jumpBufferTimer > 0) {
         p.vy = -14.5;
         p.coyoteTimer = 0;
         p.jumpBufferTimer = 0;
-        p.scaleY = 1.3; p.scaleX = 0.75; // Squash animation
+        p.scaleY = 1.3; p.scaleX = 0.75; 
         playSfx(180, 450, 'square', 0.12, 0.08);
         createDust(p.x + p.w/2, p.y + p.h, 6);
     }
 
-    // Smooth Recovery dari Squash & Stretch
+    // Smooth Recovery
     p.scaleX += (1 - p.scaleX) * 0.15;
     p.scaleY += (1 - p.scaleY) * 0.15;
 
-    // Camera Follow Smooth (Lerp)
+    // Kamera Follow
     let targetCamX = p.x - viewportW * 0.35;
     cameraX += (targetCamX - cameraX) * 0.08;
 
     updatePlatforms();
 
-    // Deteksi Pijakan Platform
+    // Deteksi Pijakan
     let wasGrounded = p.grounded;
     p.grounded = false;
 
@@ -487,7 +490,7 @@ function gameLoop() {
             p.grounded = true;
 
             if (!wasGrounded) {
-                p.scaleY = 0.75; p.scaleX = 1.25; // Landing impact
+                p.scaleY = 0.75; p.scaleX = 1.25;
                 createDust(p.x + p.w/2, p.y + p.h, 7);
                 playSfx(100, 50, 'sine', 0.08, 0.05);
             }
@@ -509,12 +512,11 @@ function gameLoop() {
         }
     });
 
-    // Efek Debu saat Berlari
     if (p.grounded && Math.abs(p.vx) > 3 && Math.random() < 0.25) {
         createDust(p.x + (p.facing === 1 ? 0 : p.w), p.y + p.h, 1);
     }
 
-    // Kalah (Jatuh ke Bahaya)
+    // Mati Jatuh
     if (p.y > viewportH - 60) {
         gameRunning = false;
         playSfx(220, 50, 'sawtooth', 0.35, 0.15);
@@ -528,13 +530,12 @@ function gameLoop() {
         document.getElementById('finalScore').innerText = score;
         document.getElementById('bestScore').innerText = highScore;
         document.getElementById('gameOverModal').classList.add('active');
-        return;
+        return; // Hentikan fungsi rendering
     }
 
-    // --- RENDERING GRAFIS HD ---
+    // --- RENDERING GRAFIS ---
     ctx.clearRect(0, 0, viewportW, viewportH);
 
-    // Dynamic Gradient Background
     let skyGrad = ctx.createLinearGradient(0, 0, 0, viewportH);
     skyGrad.addColorStop(0, "#0b0f19");
     skyGrad.addColorStop(0.6, "#151c2c");
@@ -545,25 +546,17 @@ function gameLoop() {
     ctx.save();
     ctx.translate(-cameraX, 0);
 
-    // Platform Stylized
+    // Platform
     platforms.forEach(pt => {
-        // Shadow Platform
         ctx.fillStyle = "rgba(0,0,0,0.25)";
         ctx.fillRect(pt.x + 4, pt.y + 6, pt.w, pt.h);
 
-        // Main Body Platform
         ctx.fillStyle = "#1e293b";
-        ctx.beginPath();
-        ctx.roundRect(pt.x, pt.y, pt.w, pt.h, 6);
-        ctx.fill();
+        ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, pt.h, 6); ctx.fill();
 
-        // High-light Neon Top Line
         ctx.fillStyle = "#00d2d3";
-        ctx.beginPath();
-        ctx.roundRect(pt.x, pt.y, pt.w, 4, [6, 6, 0, 0]);
-        ctx.fill();
+        ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, 4, [6, 6, 0, 0]); ctx.fill();
 
-        // Render Coin
         if (pt.coin) {
             coinAngle += 0.04;
             let scaleC = Math.cos(coinAngle);
@@ -587,7 +580,7 @@ function gameLoop() {
         if (pt.alpha <= 0) particles.splice(idx, 1);
     });
 
-    // Floating Text (+10 Score)
+    // Floating Text
     floatingTexts.forEach((ft, idx) => {
         ctx.fillStyle = `rgba(255, 215, 0, ${ft.alpha})`;
         ctx.font = "bold 15px system-ui";
@@ -596,16 +589,13 @@ function gameLoop() {
         if (ft.alpha <= 0) floatingTexts.splice(idx, 1);
     });
 
-    // --- KARAKTER RENDER (VISUAL UPGRADE) ---
+    // --- KARAKTER RENDER ---
     ctx.save();
     ctx.translate(p.x + p.w/2, p.y + p.h);
 
-    // Bayangan Karakter di Tanah
     if (p.grounded) {
         ctx.fillStyle = "rgba(0,0,0,0.3)";
-        ctx.beginPath();
-        ctx.ellipse(0, -1, 12 * p.scaleX, 4, 0, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.ellipse(0, -1, 12 * p.scaleX, 4, 0, 0, Math.PI * 2); ctx.fill();
     }
 
     let tilt = p.vx * 0.035;
@@ -615,32 +605,21 @@ function gameLoop() {
     if (Math.abs(p.vx) > 0.2 && p.grounded) p.walkCycle += 0.25;
     let legSwing = Math.sin(p.walkCycle) * 8;
 
-    // Syal Melayang (Cloth Trail Effect)
     ctx.fillStyle = "#e11d48";
-    ctx.beginPath();
-    ctx.moveTo(-2, -30);
+    ctx.beginPath(); ctx.moveTo(-2, -30);
     ctx.quadraticCurveTo(-14 - p.vx * 2.5, -24 + Math.sin(Date.now()*0.01)*3, -18 - p.vx * 3.5, -12);
-    ctx.quadraticCurveTo(-8, -20, -2, -26);
-    ctx.fill();
+    ctx.quadraticCurveTo(-8, -20, -2, -26); ctx.fill();
 
-    // Kaki Belakang & Depan
     ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 4; ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0);
-    ctx.moveTo(4, -12); ctx.lineTo(4 - legSwing, 0);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0);
+    ctx.moveTo(4, -12); ctx.lineTo(4 - legSwing, 0); ctx.stroke();
 
-    // Badan Utama (Smooth Rounded Rect)
     ctx.fillStyle = playerColor;
-    ctx.beginPath();
-    ctx.roundRect(-10, -34, 20, 22, 6);
-    ctx.fill();
+    ctx.beginPath(); ctx.roundRect(-10, -34, 20, 22, 6); ctx.fill();
 
-    // Kepala Karakter
     ctx.fillStyle = "#ffdbac";
     ctx.beginPath(); ctx.arc(0, -40, 10, 0, Math.PI * 2); ctx.fill();
 
-    // Mata Karakter (Dynamic Looking Direction)
     ctx.fillStyle = "#0f172a";
     let eyeOffsetX = p.facing * 3;
     ctx.beginPath(); ctx.arc(eyeOffsetX, -41, 2.5, 0, Math.PI * 2); ctx.fill();
@@ -648,18 +627,19 @@ function gameLoop() {
     ctx.restore(); 
     ctx.restore(); 
 
-    // [FIX LAG] Optimalisasi looping visual bawah layar
+    // Bahaya Bawah (Lava)
     let time = Date.now() * 0.003;
     ctx.fillStyle = "#ff4500";
     ctx.beginPath(); ctx.moveTo(0, viewportH);
-    for (let x = 0; x <= viewportW; x += 25) { // Looping jarak dilonggarkan jadi 25
+    for (let x = 0; x <= viewportW; x += 25) { 
         let y = viewportH - 30 + Math.sin(x * 0.03 + time) * 5;
         ctx.lineTo(x, y);
     }
     ctx.lineTo(viewportW, viewportH);
     ctx.fill();
 
-    requestAnimationFrame(gameLoop);
+    // Simpan ID loop untuk diamankan saat main ulang
+    animId = requestAnimationFrame(gameLoop);
 }
 </script>
 </body>
