@@ -168,7 +168,7 @@
 <div id="loginOverlay">
     <div class="login-card">
         <h1>EDWARD GAME</h1>
-        <p>Parkur Seru</p>
+        <p>Parkur Seru Lintas Dimensi</p> 
         
         <div class="input-group">
             <label for="playerNameInput">NAMA PEMAIN</label>
@@ -325,11 +325,22 @@ resizeCanvas();
 
 
 let p, platforms, particles, floatingTexts, keys, score, cameraX, gameRunning;
+let trees = [];
+let stars = [];
+let currentDimension = 0;
+let dimensionFlash = 0;
+
+
+const themes = [
+    { plat: "#1e293b", top: "#00d2d3", lava: "#ff4500", treeTop: "#2d98da", treeTopDark: "#20bf6b", treeTrunk: "#8B4513" }, 
+    { plat: "#2f002c", top: "#ff007f", lava: "#00ffff", treeTop: "#ff007f", treeTopDark: "#d6006c", treeTrunk: "#190033" },
+    { plat: "#003b36", top: "#ff9f43", lava: "#10ac84", treeTop: "#ff9f43", treeTopDark: "#e17055", treeTrunk: "#2d3436" }  
+];
 
 function resetGame() {
     p = { 
         x: 100, y: viewportH - 300, 
-        lastY: viewportH - 300, // [FIX] Variabel untuk melacak posisi Y di frame sebelumnya
+        lastY: viewportH - 300, 
         w: 24, h: 42, 
         vx: 0, vy: 0, 
         grounded: false, 
@@ -342,12 +353,27 @@ function resetGame() {
         { x: 50, y: viewportH - 180, w: 260, h: 25, coin: false },
         { x: 360, y: viewportH - 240, w: 160, h: 25, coin: true }
     ];
+    
+    
+    stars = [];
+    for(let i=0; i<150; i++){
+        stars.push({ x: Math.random() * viewportW, y: Math.random() * viewportH * 0.7, size: Math.random() * 1.5 });
+    }
+
+    
+    trees = [];
+    for(let i=0; i<10; i++){
+        trees.push({ x: Math.random() * viewportW * 1.5, scale: 0.5 + Math.random()*0.5 });
+    }
+
     particles = [];
     floatingTexts = [];
     keys = { left: false, right: false, jumpPressed: false };
     score = 0;
     cameraX = 0;
     gameRunning = true;
+    currentDimension = 0;
+    dimensionFlash = 0;
     document.getElementById('score').innerText = '0';
     document.getElementById('gameOverModal').classList.remove('active');
 }
@@ -366,36 +392,33 @@ function createDust(x, y, count = 5) {
     }
 }
 
-
-function updatePlatforms() {
+function updateWorldElements() {
+    
     let lastPlat = platforms[platforms.length - 1];
     while (lastPlat.x < cameraX + viewportW + 300) {
-        
-        
-      
         let gap = 60 + Math.random() * 100;
         let newX = lastPlat.x + lastPlat.w + gap; 
-        
-      
         let maxJumpUp = gap > 120 ? 20 : 80; 
         let maxDropDown = 110; 
-
-        
         let yOffset = (Math.random() * (maxJumpUp + maxDropDown)) - maxJumpUp;
         let newY = lastPlat.y + yOffset;
-        
-        
         newY = Math.max(160, Math.min(viewportH - 130, newY));
-        
-       
         let newW = 70 + Math.random() * 80; 
-        
         platforms.push({ x: newX, y: newY, w: newW, h: 22, coin: Math.random() > 0.25 });
         lastPlat = platforms[platforms.length - 1];
     }
-    
-  
     platforms = platforms.filter(pt => pt.x + pt.w > cameraX - 200);
+
+  
+    let lastTree = trees.length > 0 ? trees[trees.length - 1] : { x: cameraX };
+    while (lastTree.x < (cameraX * 0.3) + viewportW + 300) { 
+        trees.push({
+            x: lastTree.x + 100 + Math.random() * 200,
+            scale: 0.5 + Math.random() * 0.6
+        });
+        lastTree = trees[trees.length - 1];
+    }
+    trees = trees.filter(tr => tr.x > (cameraX * 0.3) - 200);
 }
 
 
@@ -429,6 +452,7 @@ let coinAngle = 0;
 function gameLoop() {
     if (!gameRunning) return;
 
+    
     const accel = p.grounded ? 0.6 : 0.35; 
     const friction = p.grounded ? 0.82 : 0.90; 
 
@@ -444,11 +468,9 @@ function gameLoop() {
     
     p.vx = Math.max(-6, Math.min(6, p.vx));
     p.x += p.vx;
-
-    
     p.lastY = p.y; 
 
-    // Gravitasi
+    
     p.vy += 0.75;
     p.y += p.vy;
 
@@ -477,27 +499,31 @@ function gameLoop() {
     let targetCamX = p.x - viewportW * 0.35;
     cameraX += (targetCamX - cameraX) * 0.08;
 
-    updatePlatforms();
+    updateWorldElements();
 
-  
     let wasGrounded = p.grounded;
     p.grounded = false;
+
+    
+    let dimCheck = Math.floor(score / 50);
+    if(dimCheck > currentDimension && score > 0) {
+        currentDimension = dimCheck;
+        dimensionFlash = 1; // Memicu layar putih flash
+        playSfx(800, 150, 'sawtooth', 0.6, 0.3); 
+        floatingTexts.push({ x: p.x + p.w/2, y: p.y - 30, text: "DIMENSI BERUBAH", alpha: 1 });
+    }
+    let curTheme = themes[currentDimension % themes.length];
 
     platforms.forEach(pt => {
         let isInsideX = p.x + p.w > pt.x && p.x < pt.x + pt.w;
         let isFalling = p.vy > 0;
-        
-       
         let previousBottom = p.lastY + p.h;
         let currentBottom = p.y + p.h;
 
-       
         if (isInsideX && isFalling && previousBottom <= pt.y + 12 && currentBottom >= pt.y) {
-            
             p.y = pt.y - p.h; 
             p.vy = 0;
             p.grounded = true;
-
             if (!wasGrounded) {
                 p.scaleY = 0.75; p.scaleX = 1.25;
                 createDust(p.x + p.w/2, p.y + p.h, 7);
@@ -505,7 +531,6 @@ function gameLoop() {
             }
         }
 
-        
         if (pt.coin) {
             let coinX = pt.x + pt.w / 2;
             let coinY = pt.y - 24;
@@ -525,45 +550,99 @@ function gameLoop() {
         createDust(p.x + (p.facing === 1 ? 0 : p.w), p.y + p.h, 1);
     }
 
-   
     if (p.y > viewportH - 60) {
         gameRunning = false;
         playSfx(220, 50, 'sawtooth', 0.35, 0.15);
-
         if (score > highScore) {
             highScore = score;
             localStorage.setItem('edward_highscore', highScore);
             document.getElementById('loginHighScore').innerText = highScore;
         }
-
         document.getElementById('finalScore').innerText = score;
         document.getElementById('bestScore').innerText = highScore;
         document.getElementById('gameOverModal').classList.add('active');
         return; 
     }
 
-    
+
     ctx.clearRect(0, 0, viewportW, viewportH);
 
+    
+    let jam = new Date().getHours();
+    let isNight = (jam >= 18 || jam < 6); 
+
     let skyGrad = ctx.createLinearGradient(0, 0, 0, viewportH);
-    skyGrad.addColorStop(0, "#0b0f19");
-    skyGrad.addColorStop(0.6, "#151c2c");
-    skyGrad.addColorStop(1, "#1f293d");
+    if(isNight) {
+        skyGrad.addColorStop(0, "#050B14");
+        skyGrad.addColorStop(1, "#172033");
+    } else {
+        skyGrad.addColorStop(0, "#6ebbf5"); 
+        skyGrad.addColorStop(1, "#c5e8ff");
+    }
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, viewportW, viewportH);
 
+    
+    if(isNight) {
+        ctx.fillStyle = "rgba(255,255,255,0.7)";
+        stars.forEach(s => {
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
+        });
+    }
+
+    
+    let timeOsc = Math.sin(Date.now() * 0.002);
+    if(isNight) {
+        
+        ctx.fillStyle = "#f1f2f6";
+        ctx.beginPath(); ctx.arc(viewportW - 100, 100, 40, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#050B14"; 
+        ctx.beginPath(); ctx.arc(viewportW - 110, 90, 35, 0, Math.PI*2); ctx.fill();
+    } else {
+    
+        ctx.fillStyle = "rgba(255, 215, 0, 0.3)"; 
+        ctx.beginPath(); ctx.arc(viewportW - 100, 100, 60 + timeOsc*10, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = "#ffdd59"; 
+        ctx.beginPath(); ctx.arc(viewportW - 100, 100, 45, 0, Math.PI*2); ctx.fill();
+    }
+
     ctx.save();
+    
+ 
+    ctx.save();
+    ctx.translate(-cameraX * 0.3, 0); 
+    trees.forEach(tr => {
+        let ty = viewportH - 70; 
+        
+        
+        ctx.fillStyle = curTheme.treeTrunk;
+        ctx.fillRect(tr.x - 10*tr.scale, ty - 100*tr.scale, 20*tr.scale, 100*tr.scale);
+        
+       
+        ctx.fillStyle = curTheme.treeTopDark; 
+        ctx.beginPath();
+        ctx.arc(tr.x, ty - 120*tr.scale, 50*tr.scale, 0, Math.PI*2);
+        ctx.fill();
+
+        ctx.fillStyle = curTheme.treeTop; 
+        ctx.beginPath();
+        ctx.arc(tr.x - 30*tr.scale, ty - 100*tr.scale, 40*tr.scale, 0, Math.PI*2);
+        ctx.arc(tr.x + 30*tr.scale, ty - 100*tr.scale, 40*tr.scale, 0, Math.PI*2);
+        ctx.arc(tr.x, ty - 140*tr.scale, 45*tr.scale, 0, Math.PI*2);
+        ctx.fill();
+    });
+    ctx.restore();
+
     ctx.translate(-cameraX, 0);
 
-  
     platforms.forEach(pt => {
         ctx.fillStyle = "rgba(0,0,0,0.25)";
         ctx.fillRect(pt.x + 4, pt.y + 6, pt.w, pt.h);
 
-        ctx.fillStyle = "#1e293b";
+        ctx.fillStyle = curTheme.plat;
         ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, pt.h, 6); ctx.fill();
 
-        ctx.fillStyle = "#00d2d3";
+        ctx.fillStyle = curTheme.top;
         ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, 4, [6, 6, 0, 0]); ctx.fill();
 
         if (pt.coin) {
@@ -579,6 +658,7 @@ function gameLoop() {
         }
     });
 
+    
     particles.forEach((pt, idx) => {
         if(pt.type === 'dust') {
             ctx.fillStyle = `rgba(255, 255, 255, ${pt.alpha})`;
@@ -588,15 +668,16 @@ function gameLoop() {
         if (pt.alpha <= 0) particles.splice(idx, 1);
     });
 
+    
     floatingTexts.forEach((ft, idx) => {
         ctx.fillStyle = `rgba(255, 215, 0, ${ft.alpha})`;
-        ctx.font = "bold 15px system-ui";
-        ctx.fillText(ft.text, ft.x - 10, ft.y);
-        ft.y -= 1.2; ft.alpha -= 0.03;
+        ctx.font = "bold 16px system-ui";
+        ctx.fillText(ft.text, ft.x - 15, ft.y);
+        ft.y -= 1.2; ft.alpha -= 0.02;
         if (ft.alpha <= 0) floatingTexts.splice(idx, 1);
     });
 
-    
+   
     ctx.save();
     ctx.translate(p.x + p.w/2, p.y + p.h);
 
@@ -634,15 +715,23 @@ function gameLoop() {
     ctx.restore(); 
     ctx.restore(); 
 
-    let time = Date.now() * 0.003;
-    ctx.fillStyle = "#ff4500";
+   
+    let timeLava = Date.now() * 0.003;
+    ctx.fillStyle = curTheme.lava;
     ctx.beginPath(); ctx.moveTo(0, viewportH);
     for (let x = 0; x <= viewportW; x += 25) { 
-        let y = viewportH - 30 + Math.sin(x * 0.03 + time) * 5;
+        let y = viewportH - 30 + Math.sin(x * 0.03 + timeLava) * 6;
         ctx.lineTo(x, y);
     }
     ctx.lineTo(viewportW, viewportH);
     ctx.fill();
+
+   
+    if (dimensionFlash > 0) {
+        ctx.fillStyle = `rgba(255, 255, 255, ${dimensionFlash})`;
+        ctx.fillRect(0, 0, viewportW, viewportH);
+        dimensionFlash -= 0.03; 
+    }
 
     animId = requestAnimationFrame(gameLoop);
 }
