@@ -105,6 +105,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
         .score-badge { color: #ffd700; font-weight: 900; }
+        .lives-badge { color: #ff4757; font-weight: 900; }
 
         .ctrl { 
             position: absolute; bottom: 25px; width: 70px; height: 70px; 
@@ -186,6 +187,7 @@
 
 <div id="gameUI">
     <div class="hud-badge">👤 <span id="displayPlayerName">Player</span></div>
+    <div class="hud-badge lives-badge">❤️ <span id="lives">3</span></div>
     <div class="hud-badge score-badge">🪙 <span id="score">0</span></div>
 </div>
 
@@ -206,7 +208,7 @@
 <canvas id="game"></canvas>
 
 <script>
-// --- AUDIO SYSTEM ---
+
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx;
 function initAudio() {
@@ -231,8 +233,14 @@ let playerName = "Edward";
 let playerColor = "#ff4500";
 let highScore = localStorage.getItem('edward_highscore') || 0;
 let animId; 
+let lives = 3;
+let heartAngle = 0;
 document.getElementById('loginHighScore').innerText = highScore;
 
+function updateLivesUI() {
+    let livesEl = document.getElementById('lives');
+    if (livesEl) livesEl.innerText = lives;
+}
 
 window.addEventListener('load', () => {
     let bar = document.getElementById('progressBar');
@@ -326,6 +334,9 @@ const themes = [
 ];
 
 function resetGame() {
+    lives = 3;
+    updateLivesUI();
+
     p = { 
         x: 100, y: viewportH - 300, lastY: viewportH - 300, 
         w: 24, h: 42, vx: 0, vy: 0, 
@@ -334,8 +345,8 @@ function resetGame() {
     };
     
     platforms = [
-        { x: 50, y: viewportH - 180, w: 260, h: 25, coin: false },
-        { x: 360, y: viewportH - 240, w: 160, h: 25, coin: true }
+        { x: 50, y: viewportH - 180, w: 260, h: 25, coin: false, heart: false },
+        { x: 360, y: viewportH - 240, w: 160, h: 25, coin: true, heart: false }
     ];
     
     stars = [];
@@ -343,11 +354,12 @@ function resetGame() {
         stars.push({ x: Math.random() * viewportW, y: Math.random() * viewportH * 0.7, size: Math.random() * 1.5 });
     }
 
-   
     bgElements = [];
-    for(let i=0; i<5; i++){
+    let startX = 100;
+    for(let i=0; i<6; i++){
+        startX += 200 + Math.random() * 150;
         bgElements.push({ 
-            x: Math.random() * viewportW * 1.5, 
+            x: startX, 
             scale: 0.5 + Math.random()*0.5,
             seed: Math.floor(Math.random() * 1000)
         });
@@ -381,6 +393,17 @@ function createDust(x, y, count = 5) {
     }
 }
 
+function ensureHeartsOnPlatforms() {
+    if (lives >= 3) return;
+    let availablePlats = platforms.filter(pt => pt.x > p.x + 60 && !pt.coin && !pt.heart);
+    if (availablePlats.length > 0) {
+        let countToSpawn = Math.min(2, availablePlats.length);
+        for (let i = 0; i < countToSpawn; i++) {
+            availablePlats[i].heart = true;
+        }
+    }
+}
+
 function updateWorldElements() {
     let lastPlat = platforms[platforms.length - 1];
     while (lastPlat.x < cameraX + viewportW + 300) {
@@ -389,21 +412,25 @@ function updateWorldElements() {
         let maxJumpUp = gap > 120 ? 20 : 80; 
         let yOffset = (Math.random() * (maxJumpUp + 110)) - maxJumpUp;
         let newY = Math.max(160, Math.min(viewportH - 130, lastPlat.y + yOffset));
-        platforms.push({ x: newX, y: newY, w: 70 + Math.random() * 80, h: 22, coin: Math.random() > 0.25 });
+        
+        let isCoin = Math.random() > 0.25;
+        let isHeart = !isCoin && (lives < 3) && (Math.random() < 0.5);
+
+        platforms.push({ x: newX, y: newY, w: 70 + Math.random() * 80, h: 22, coin: isCoin, heart: isHeart });
         lastPlat = platforms[platforms.length - 1];
     }
     platforms = platforms.filter(pt => pt.x + pt.w > cameraX - 200);
 
-    let lastBg = bgElements.length > 0 ? bgElements[bgElements.length - 1] : { x: cameraX };
+    let lastBg = bgElements.length > 0 ? bgElements[bgElements.length - 1] : { x: cameraX * 0.3 };
     while (lastBg.x < (cameraX * 0.3) + viewportW + 400) { 
         bgElements.push({
-            x: lastBg.x + 250 + Math.random() * 200, // Jarak diperlebar supaya pohon tidak rapat/sesak
+            x: lastBg.x + 220 + Math.random() * 180,
             scale: 0.5 + Math.random() * 0.5,
             seed: Math.floor(Math.random() * 1000)
         });
         lastBg = bgElements[bgElements.length - 1];
     }
-    bgElements = bgElements.filter(bg => bg.x > (cameraX * 0.3) - 200);
+    bgElements = bgElements.filter(bg => bg.x > (cameraX * 0.3) - 300);
 
     let camParallaxX = cameraX * 0.1;
     clouds.forEach(c => {
@@ -508,20 +535,55 @@ function gameLoop() {
                 floatingTexts.push({ x: cx, y: cy, text: "+10", alpha: 1 });
             }
         }
+
+        if (pt.heart) {
+            let hx = pt.x + pt.w / 2, hy = pt.y - 24;
+            let dx = (p.x + p.w/2) - hx, dy = (p.y + p.h/2) - hy;
+            if (Math.sqrt(dx*dx + dy*dy) < 26) {
+                pt.heart = false;
+                if (lives < 3) {
+                    lives++;
+                    updateLivesUI();
+                    playSfx(500, 950, 'sine', 0.22, 0.15);
+                    floatingTexts.push({ x: hx, y: hy, text: "+1 ❤️", alpha: 1 });
+                }
+            }
+        }
     });
 
     if (p.grounded && Math.abs(p.vx) > 3 && Math.random() < 0.25) createDust(p.x + (p.facing === 1 ? 0 : p.w), p.y + p.h, 1);
 
     if (p.y > viewportH - 60) {
-        gameRunning = false; playSfx(220, 50, 'sawtooth', 0.35, 0.15);
-        if (score > highScore) {
-            highScore = score; localStorage.setItem('edward_highscore', highScore);
-            document.getElementById('loginHighScore').innerText = highScore;
+        if (lives > 1) {
+            lives--;
+            updateLivesUI();
+            playSfx(150, 50, 'sawtooth', 0.25, 0.2);
+            floatingTexts.push({ x: p.x + p.w/2, y: viewportH - 120, text: "-1 ❤️", alpha: 1 });
+            
+            let safePlat = platforms.find(pt => pt.x + pt.w > cameraX + 80 && pt.x < cameraX + viewportW - 100);
+            if (!safePlat) safePlat = platforms[0];
+            
+            p.x = safePlat.x + safePlat.w / 2 - p.w / 2;
+            p.y = safePlat.y - p.h - 30;
+            p.vx = 0;
+            p.vy = 0;
+            p.grounded = false;
+
+            ensureHeartsOnPlatforms();
+        } else {
+            lives = 0;
+            updateLivesUI();
+            gameRunning = false; 
+            playSfx(220, 50, 'sawtooth', 0.35, 0.15);
+            if (score > highScore) {
+                highScore = score; localStorage.setItem('edward_highscore', highScore);
+                document.getElementById('loginHighScore').innerText = highScore;
+            }
+            document.getElementById('finalScore').innerText = score;
+            document.getElementById('bestScore').innerText = highScore;
+            document.getElementById('gameOverModal').classList.add('active');
+            return;
         }
-        document.getElementById('finalScore').innerText = score;
-        document.getElementById('bestScore').innerText = highScore;
-        document.getElementById('gameOverModal').classList.add('active');
-        return; 
     }
 
    
@@ -573,11 +635,9 @@ function gameLoop() {
     clouds.forEach(c => {
         if (curTheme.type === 'earth') {
             ctx.fillStyle = isNight ? "#94a3b8" : "#ffffff"; 
-            ctx.beginPath();
-            ctx.arc(c.x, c.y, 30*c.scale, 0, Math.PI*2);
-            ctx.arc(c.x + 25*c.scale, c.y - 10*c.scale, 35*c.scale, 0, Math.PI*2);
-            ctx.arc(c.x + 50*c.scale, c.y, 30*c.scale, 0, Math.PI*2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(c.x, c.y, 30*c.scale, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(c.x + 25*c.scale, c.y - 10*c.scale, 35*c.scale, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(c.x + 50*c.scale, c.y, 30*c.scale, 0, Math.PI*2); ctx.fill();
         } else if (curTheme.type === 'cyber') {
             ctx.fillStyle = "rgba(0, 255, 255, 0.15)";
             ctx.fillRect(c.x, c.y, 80*c.scale, 15*c.scale);
@@ -599,16 +659,13 @@ function gameLoop() {
         
         if (curTheme.type === 'earth') {
             let trunkH = 140 * bg.scale, trunkW = 18 * bg.scale;
-            ctx.fillStyle = "#8B4513";
+            ctx.fillStyle = isNight ? "#5c3a21" : "#8B4513";
             ctx.fillRect(bg.x - trunkW/2, ty - trunkH, trunkW, trunkH + 20); 
             
-        
-            ctx.fillStyle = "#2ecc71"; 
-            ctx.beginPath(); 
-            ctx.arc(bg.x, ty - trunkH, 55*bg.scale, 0, Math.PI*2); 
-            ctx.arc(bg.x - 30*bg.scale, ty - trunkH + 15*bg.scale, 40*bg.scale, 0, Math.PI*2);
-            ctx.arc(bg.x + 30*bg.scale, ty - trunkH + 15*bg.scale, 40*bg.scale, 0, Math.PI*2);
-            ctx.fill();
+            ctx.fillStyle = isNight ? "#15803d" : "#2ecc71"; 
+            ctx.beginPath(); ctx.arc(bg.x, ty - trunkH, 55*bg.scale, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(bg.x - 30*bg.scale, ty - trunkH + 15*bg.scale, 40*bg.scale, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(bg.x + 30*bg.scale, ty - trunkH + 15*bg.scale, 40*bg.scale, 0, Math.PI*2); ctx.fill();
         } 
         else if (curTheme.type === 'cyber') {
             let bw = 60 * bg.scale, bh = 250 * bg.scale;
@@ -641,11 +698,24 @@ function gameLoop() {
         ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(pt.x + 4, pt.y + 6, pt.w, pt.h);
         ctx.fillStyle = curTheme.plat; ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, pt.h, 6); ctx.fill();
         ctx.fillStyle = curTheme.top; ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, 4, [6, 6, 0, 0]); ctx.fill();
+        
         if (pt.coin) {
             coinAngle += 0.04; let scaleC = Math.cos(coinAngle);
             ctx.save(); ctx.translate(pt.x + pt.w/2, pt.y - 22); ctx.scale(scaleC, 1);
             ctx.fillStyle = "#ffd700"; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill();
             ctx.strokeStyle = "#ffa500"; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+        }
+
+        if (pt.heart) {
+            heartAngle += 0.04;
+            let floatY = Math.sin(heartAngle * 2) * 3;
+            ctx.save();
+            ctx.translate(pt.x + pt.w / 2, pt.y - 22 + floatY);
+            ctx.font = "16px system-ui, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("❤️", 0, 0);
+            ctx.restore();
         }
     });
 
