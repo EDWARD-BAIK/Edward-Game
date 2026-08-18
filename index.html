@@ -233,7 +233,6 @@ let highScore = localStorage.getItem('edward_highscore') || 0;
 let animId; 
 document.getElementById('loginHighScore').innerText = highScore;
 
-
 window.addEventListener('load', () => {
     let bar = document.getElementById('progressBar');
     let status = document.getElementById('loadingStatus');
@@ -405,7 +404,7 @@ function updateWorldElements() {
     }
     bgElements = bgElements.filter(bg => bg.x > (cameraX * 0.3) - 200);
 
- 
+    
     let camParallaxX = cameraX * 0.1;
     clouds.forEach(c => {
         c.x += c.speed;
@@ -454,7 +453,7 @@ function gameLoop() {
     p.vx = Math.max(-6, Math.min(6, p.vx));
     p.x += p.vx; p.lastY = p.y; 
 
-    p.vy += 0.75; 
+    p.vy += 0.75;
     p.y += p.vy;
 
     if (p.grounded) p.coyoteTimer = 7; else p.coyoteTimer--;
@@ -478,13 +477,13 @@ function gameLoop() {
     let wasGrounded = p.grounded;
     p.grounded = false;
 
-    
+
     let dimCheck = Math.floor(score / 50);
     if(dimCheck > currentDimension && score > 0) {
         currentDimension = dimCheck;
         dimensionFlash = 1;
         playSfx(800, 150, 'sawtooth', 0.6, 0.3);
-        floatingTexts.push({ x: p.x + p.w/2, y: p.y - 30, text: "✨ DIMENSI BARU!", alpha: 1 });
+        floatingTexts.push({ x: p.x + p.w/2, y: p.y - 30, text: "DIMENSI BARU!", alpha: 1 });
     }
     let curTheme = themes[currentDimension % themes.length];
 
@@ -539,33 +538,34 @@ function gameLoop() {
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, viewportW, viewportH);
 
+   
     if(isNight && curTheme.type === 'earth') {
-        ctx.fillStyle = "rgba(255,255,255,0.7)";
-        stars.forEach(s => { ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); });
+        ctx.fillStyle = "#ffffff";
+        stars.forEach(s => { ctx.fillRect(s.x, s.y, s.size*1.5, s.size*1.5); });
     }
 
-    
+ 
     let timeOsc = Math.sin(Date.now() * 0.002);
     if (curTheme.type === 'earth') {
         if(isNight) {
             ctx.fillStyle = "#f1f2f6";
             ctx.beginPath(); ctx.arc(viewportW - 100, 100, 40, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = curTheme.night1;
+            ctx.fillStyle = curTheme.night1; 
             ctx.beginPath(); ctx.arc(viewportW - 110, 90, 35, 0, Math.PI*2); ctx.fill();
         } else {
-            ctx.fillStyle = "rgba(255, 215, 0, 0.3)";
-            ctx.beginPath(); ctx.arc(viewportW - 100, 100, 60 + timeOsc*10, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#ffefad"; 
+            ctx.beginPath(); ctx.arc(viewportW - 100, 100, 60 + timeOsc*5, 0, Math.PI*2); ctx.fill();
             ctx.fillStyle = "#ffdd59";
             ctx.beginPath(); ctx.arc(viewportW - 100, 100, 45, 0, Math.PI*2); ctx.fill();
         }
     } else if (curTheme.type === 'cyber') {
-      
+        
         ctx.fillStyle = isNight ? "#00ffff" : "#ff007f";
         ctx.beginPath(); ctx.arc(viewportW - 100, 100, 50, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = isNight ? curTheme.night1 : curTheme.sky1;
         for(let i=0; i<5; i++) ctx.fillRect(viewportW - 160, 110 + i*10, 120, 3 + i);
     } else if (curTheme.type === 'alien') {
-       
+      
         ctx.fillStyle = isNight ? "#2d98da" : "#eb4d4b";
         ctx.beginPath(); ctx.arc(viewportW - 100, 100, 45, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = isNight ? "rgba(0, 210, 211, 0.6)" : "rgba(240, 147, 43, 0.6)";
@@ -573,12 +573,13 @@ function gameLoop() {
         ctx.beginPath(); ctx.ellipse(viewportW - 100, 100, 70, 15, 20 * Math.PI/180, 0, Math.PI*2); ctx.stroke();
     }
 
-    
+   
     ctx.save();
     ctx.translate(-cameraX * 0.1, 0); 
     clouds.forEach(c => {
         if (curTheme.type === 'earth') {
-            ctx.fillStyle = isNight ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.8)";
+       
+            ctx.fillStyle = isNight ? "#94a3b8" : "#ffffff"; 
             ctx.beginPath();
             ctx.arc(c.x, c.y, 30*c.scale, 0, Math.PI*2);
             ctx.arc(c.x + 25*c.scale, c.y - 10*c.scale, 35*c.scale, 0, Math.PI*2);
@@ -597,16 +598,16 @@ function gameLoop() {
     });
     ctx.restore();
 
-   
+  
     ctx.save();
     ctx.translate(-cameraX * 0.3, 0);
     bgElements.forEach(bg => {
-        let ty = viewportH; 
+        let ty = viewportH; // Akar menancap kuat di absolute dasar layar
         
         if (curTheme.type === 'earth') {
             let trunkH = 150 * bg.scale, trunkW = 20 * bg.scale;
             ctx.fillStyle = "#8B4513";
-            ctx.fillRect(bg.x - trunkW/2, ty - trunkH, trunkW, trunkH + 20); 
+            ctx.fillRect(bg.x - trunkW/2, ty - trunkH, trunkW, trunkH + 20); // +20 biar nyebur ke lava
             ctx.fillStyle = "#20bf6b"; ctx.beginPath(); ctx.arc(bg.x, ty - trunkH, 60*bg.scale, 0, Math.PI*2); ctx.fill();
             ctx.fillStyle = "#2d98da"; ctx.beginPath();
             ctx.arc(bg.x - 35*bg.scale, ty - trunkH + 20*bg.scale, 45*bg.scale, 0, Math.PI*2);
@@ -640,7 +641,7 @@ function gameLoop() {
     ctx.save();
     ctx.translate(-cameraX, 0);
 
-    
+   
     platforms.forEach(pt => {
         ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(pt.x + 4, pt.y + 6, pt.w, pt.h);
         ctx.fillStyle = curTheme.plat; ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, pt.h, 6); ctx.fill();
@@ -668,7 +669,7 @@ function gameLoop() {
         if (ft.alpha <= 0) floatingTexts.splice(idx, 1);
     });
 
-    
+  
     ctx.save();
     ctx.translate(p.x + p.w/2, p.y + p.h);
     if (p.grounded) {
@@ -693,15 +694,15 @@ function gameLoop() {
     ctx.restore(); 
     ctx.restore(); 
 
- 
+    
     let timeLava = Date.now() * 0.003;
     ctx.fillStyle = curTheme.lava;
     ctx.beginPath(); ctx.moveTo(0, viewportH);
-    for (let x = 0; x <= viewportW; x += 25) { 
+    for (let x = 0; x <= viewportW + 50; x += 25) { 
         let y = viewportH - 30 + Math.sin(x * 0.03 + timeLava) * 6;
         ctx.lineTo(x, y);
     }
-    ctx.lineTo(viewportW, viewportH);
+    ctx.lineTo(viewportW + 50, viewportH);
     ctx.fill();
 
     
