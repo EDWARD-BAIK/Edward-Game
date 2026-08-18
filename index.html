@@ -16,7 +16,6 @@
             -webkit-user-select: none; 
         }
 
-    
         #loadingOverlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #090a0f; z-index: 2000;
@@ -39,7 +38,6 @@
         }
         .loading-status { color: #94a3b8; font-size: 12px; margin-top: 10px; font-weight: 600; }
 
-        
         #loginOverlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: radial-gradient(circle at center, #1e1b4b 0%, #090a0f 100%);
@@ -95,7 +93,6 @@
             display: inline-block; border: 1px solid rgba(255, 215, 0, 0.2);
         }
 
-   
         #gameUI {
             position: absolute; top: 18px; left: 18px; right: 18px;
             display: flex; justify-content: space-between; align-items: center;
@@ -109,7 +106,6 @@
         }
         .score-badge { color: #ffd700; font-weight: 900; }
 
-        
         .ctrl { 
             position: absolute; bottom: 25px; width: 70px; height: 70px; 
             background: rgba(255,255,255,0.15);
@@ -132,7 +128,6 @@
         }
         #jumpBtn:active { transform: scale(0.92); }
 
-    
         #gameOverModal { 
             position: absolute; top: 50%; left: 50%; 
             transform: translate(-50%, -50%) scale(0.85); 
@@ -155,7 +150,6 @@
 </head>
 <body>
 
-
 <div id="loadingOverlay">
     <div class="loader-title">EDWARD GAME</div>
     <div class="progress-box">
@@ -164,11 +158,10 @@
     <div class="loading-status" id="loadingStatus">Memuat aset...</div>
 </div>
 
-
 <div id="loginOverlay">
     <div class="login-card">
         <h1>EDWARD GAME</h1>
-        <p>Parkur Seru Lintas Dimensi</p> 
+        <p>Parkur Lintas Dimensi</p>
         
         <div class="input-group">
             <label for="playerNameInput">NAMA PEMAIN</label>
@@ -191,17 +184,14 @@
     </div>
 </div>
 
-
 <div id="gameUI">
     <div class="hud-badge">👤 <span id="displayPlayerName">Player</span></div>
     <div class="hud-badge score-badge">🪙 <span id="score">0</span></div>
 </div>
 
-
 <div id="leftBtn" class="ctrl">◀</div>
 <div id="rightBtn" class="ctrl">▶</div>
 <div id="jumpBtn">LOMPAT</div>
-
 
 <div id="gameOverModal">
     <h2>KAMU KALAH</h2>
@@ -256,10 +246,8 @@ window.addEventListener('load', () => {
             clearInterval(interval);
             status.innerText = "Siap!";
             setTimeout(() => {
-                let loadOverlay = document.getElementById('loadingOverlay');
-                loadOverlay.style.opacity = '0';
-                setTimeout(() => loadOverlay.style.display = 'none', 500);
-                
+                document.getElementById('loadingOverlay').style.opacity = '0';
+                setTimeout(() => document.getElementById('loadingOverlay').style.display = 'none', 500);
                 let loginOverlay = document.getElementById('loginOverlay');
                 loginOverlay.style.display = 'flex';
                 setTimeout(() => loginOverlay.style.opacity = '1', 50);
@@ -325,28 +313,25 @@ resizeCanvas();
 
 
 let p, platforms, particles, floatingTexts, keys, score, cameraX, gameRunning;
-let trees = [];
+let bgElements = [];
 let stars = [];
+let clouds = [];
 let currentDimension = 0;
 let dimensionFlash = 0;
 
 
 const themes = [
-    { plat: "#1e293b", top: "#00d2d3", lava: "#ff4500", treeTop: "#2d98da", treeTopDark: "#20bf6b", treeTrunk: "#8B4513" }, 
-    { plat: "#2f002c", top: "#ff007f", lava: "#00ffff", treeTop: "#ff007f", treeTopDark: "#d6006c", treeTrunk: "#190033" },
-    { plat: "#003b36", top: "#ff9f43", lava: "#10ac84", treeTop: "#ff9f43", treeTopDark: "#e17055", treeTrunk: "#2d3436" }  
+    { type: 'earth', plat: "#1e293b", top: "#00d2d3", lava: "#ff4500", sky1: "#6ebbf5", sky2: "#c5e8ff", night1: "#050B14", night2: "#172033" }, 
+    { type: 'cyber', plat: "#2f002c", top: "#ff007f", lava: "#00ffff", sky1: "#10002b", sky2: "#3c096c", night1: "#050014", night2: "#190033" },
+    { type: 'alien', plat: "#1a3622", top: "#00e676", lava: "#c51162", sky1: "#4a148c", sky2: "#b71c1c", night1: "#260e40", night2: "#4a0b22" }  
 ];
 
 function resetGame() {
     p = { 
-        x: 100, y: viewportH - 300, 
-        lastY: viewportH - 300, 
-        w: 24, h: 42, 
-        vx: 0, vy: 0, 
-        grounded: false, 
-        scaleX: 1, scaleY: 1, 
-        walkCycle: 0, facing: 1,
-        coyoteTimer: 0, jumpBufferTimer: 0
+        x: 100, y: viewportH - 300, lastY: viewportH - 300, 
+        w: 24, h: 42, vx: 0, vy: 0, 
+        grounded: false, scaleX: 1, scaleY: 1, 
+        walkCycle: 0, facing: 1, coyoteTimer: 0, jumpBufferTimer: 0
     };
     
     platforms = [
@@ -354,26 +339,34 @@ function resetGame() {
         { x: 360, y: viewportH - 240, w: 160, h: 25, coin: true }
     ];
     
-    
     stars = [];
     for(let i=0; i<150; i++){
         stars.push({ x: Math.random() * viewportW, y: Math.random() * viewportH * 0.7, size: Math.random() * 1.5 });
     }
 
-    
-    trees = [];
+    bgElements = [];
     for(let i=0; i<10; i++){
-        trees.push({ x: Math.random() * viewportW * 1.5, scale: 0.5 + Math.random()*0.5 });
+        bgElements.push({ 
+            x: Math.random() * viewportW * 1.5, 
+            scale: 0.4 + Math.random()*0.6,
+            seed: Math.floor(Math.random() * 1000)
+        });
     }
 
-    particles = [];
-    floatingTexts = [];
+    clouds = [];
+    for(let i=0; i<7; i++){
+        clouds.push({
+            x: Math.random() * viewportW * 1.5,
+            y: 30 + Math.random() * (viewportH * 0.4),
+            scale: 0.5 + Math.random() * 0.8,
+            speed: 0.15 + Math.random() * 0.25
+        });
+    }
+
+    particles = []; floatingTexts = [];
     keys = { left: false, right: false, jumpPressed: false };
-    score = 0;
-    cameraX = 0;
-    gameRunning = true;
-    currentDimension = 0;
-    dimensionFlash = 0;
+    score = 0; cameraX = 0; gameRunning = true;
+    currentDimension = 0; dimensionFlash = 0;
     document.getElementById('score').innerText = '0';
     document.getElementById('gameOverModal').classList.remove('active');
 }
@@ -381,44 +374,44 @@ function resetGame() {
 function createDust(x, y, count = 5) {
     for(let i=0; i<count; i++) {
         particles.push({
-            type: 'dust',
-            x: x + (Math.random()*12 - 6),
-            y: y,
-            vx: Math.random()*3 - 1.5,
-            vy: -Math.random()*1.5 - 0.5,
-            size: Math.random()*3 + 2,
-            alpha: 1
+            type: 'dust', x: x + (Math.random()*12 - 6), y: y,
+            vx: Math.random()*3 - 1.5, vy: -Math.random()*1.5 - 0.5,
+            size: Math.random()*3 + 2, alpha: 1
         });
     }
 }
 
 function updateWorldElements() {
-    
     let lastPlat = platforms[platforms.length - 1];
     while (lastPlat.x < cameraX + viewportW + 300) {
         let gap = 60 + Math.random() * 100;
         let newX = lastPlat.x + lastPlat.w + gap; 
         let maxJumpUp = gap > 120 ? 20 : 80; 
-        let maxDropDown = 110; 
-        let yOffset = (Math.random() * (maxJumpUp + maxDropDown)) - maxJumpUp;
-        let newY = lastPlat.y + yOffset;
-        newY = Math.max(160, Math.min(viewportH - 130, newY));
-        let newW = 70 + Math.random() * 80; 
-        platforms.push({ x: newX, y: newY, w: newW, h: 22, coin: Math.random() > 0.25 });
+        let yOffset = (Math.random() * (maxJumpUp + 110)) - maxJumpUp;
+        let newY = Math.max(160, Math.min(viewportH - 130, lastPlat.y + yOffset));
+        platforms.push({ x: newX, y: newY, w: 70 + Math.random() * 80, h: 22, coin: Math.random() > 0.25 });
         lastPlat = platforms[platforms.length - 1];
     }
     platforms = platforms.filter(pt => pt.x + pt.w > cameraX - 200);
 
-  
-    let lastTree = trees.length > 0 ? trees[trees.length - 1] : { x: cameraX };
-    while (lastTree.x < (cameraX * 0.3) + viewportW + 300) { 
-        trees.push({
-            x: lastTree.x + 100 + Math.random() * 200,
-            scale: 0.5 + Math.random() * 0.6
+    let lastBg = bgElements.length > 0 ? bgElements[bgElements.length - 1] : { x: cameraX };
+    while (lastBg.x < (cameraX * 0.3) + viewportW + 300) { 
+        bgElements.push({
+            x: lastBg.x + 120 + Math.random() * 200,
+            scale: 0.4 + Math.random() * 0.6,
+            seed: Math.floor(Math.random() * 1000)
         });
-        lastTree = trees[trees.length - 1];
+        lastBg = bgElements[bgElements.length - 1];
     }
-    trees = trees.filter(tr => tr.x > (cameraX * 0.3) - 200);
+    bgElements = bgElements.filter(bg => bg.x > (cameraX * 0.3) - 200);
+
+ 
+    let camParallaxX = cameraX * 0.1;
+    clouds.forEach(c => {
+        c.x += c.speed;
+        if (c.x < camParallaxX - 200) c.x = camParallaxX + viewportW + 200;
+        if (c.x > camParallaxX + viewportW + 200) c.x = camParallaxX - 200; 
+    });
 }
 
 
@@ -441,7 +434,6 @@ const setupTouch = (id, key) => {
 };
 setupTouch('leftBtn', 'left');
 setupTouch('rightBtn', 'right');
-
 document.getElementById('jumpBtn').addEventListener('pointerdown', e => {
     e.preventDefault(); initAudio(); keys.jumpPressed = true;
 });
@@ -452,42 +444,24 @@ let coinAngle = 0;
 function gameLoop() {
     if (!gameRunning) return;
 
-    
     const accel = p.grounded ? 0.6 : 0.35; 
     const friction = p.grounded ? 0.82 : 0.90; 
 
-    if (keys.left) {
-        p.vx -= accel;
-        p.facing = -1;
-    } else if (keys.right) {
-        p.vx += accel;
-        p.facing = 1;
-    } else {
-        p.vx *= friction;
-    }
+    if (keys.left) { p.vx -= accel; p.facing = -1; } 
+    else if (keys.right) { p.vx += accel; p.facing = 1; } 
+    else { p.vx *= friction; }
     
     p.vx = Math.max(-6, Math.min(6, p.vx));
-    p.x += p.vx;
-    p.lastY = p.y; 
+    p.x += p.vx; p.lastY = p.y; 
 
-    
-    p.vy += 0.75;
+    p.vy += 0.75; 
     p.y += p.vy;
 
-    if (p.grounded) p.coyoteTimer = 7;
-    else p.coyoteTimer--;
-
-    if (keys.jumpPressed) {
-        p.jumpBufferTimer = 7;
-        keys.jumpPressed = false;
-    } else {
-        p.jumpBufferTimer--;
-    }
+    if (p.grounded) p.coyoteTimer = 7; else p.coyoteTimer--;
+    if (keys.jumpPressed) { p.jumpBufferTimer = 7; keys.jumpPressed = false; } else p.jumpBufferTimer--;
 
     if (p.coyoteTimer > 0 && p.jumpBufferTimer > 0) {
-        p.vy = -14.5;
-        p.coyoteTimer = 0;
-        p.jumpBufferTimer = 0;
+        p.vy = -14.5; p.coyoteTimer = 0; p.jumpBufferTimer = 0;
         p.scaleY = 1.3; p.scaleX = 0.75; 
         playSfx(180, 450, 'square', 0.12, 0.08);
         createDust(p.x + p.w/2, p.y + p.h, 6);
@@ -508,22 +482,17 @@ function gameLoop() {
     let dimCheck = Math.floor(score / 50);
     if(dimCheck > currentDimension && score > 0) {
         currentDimension = dimCheck;
-        dimensionFlash = 1; // Memicu layar putih flash
-        playSfx(800, 150, 'sawtooth', 0.6, 0.3); 
-        floatingTexts.push({ x: p.x + p.w/2, y: p.y - 30, text: "DIMENSI BERUBAH", alpha: 1 });
+        dimensionFlash = 1;
+        playSfx(800, 150, 'sawtooth', 0.6, 0.3);
+        floatingTexts.push({ x: p.x + p.w/2, y: p.y - 30, text: "✨ DIMENSI BARU!", alpha: 1 });
     }
     let curTheme = themes[currentDimension % themes.length];
 
     platforms.forEach(pt => {
         let isInsideX = p.x + p.w > pt.x && p.x < pt.x + pt.w;
         let isFalling = p.vy > 0;
-        let previousBottom = p.lastY + p.h;
-        let currentBottom = p.y + p.h;
-
-        if (isInsideX && isFalling && previousBottom <= pt.y + 12 && currentBottom >= pt.y) {
-            p.y = pt.y - p.h; 
-            p.vy = 0;
-            p.grounded = true;
+        if (isInsideX && isFalling && p.lastY + p.h <= pt.y + 12 && p.y + p.h >= pt.y) {
+            p.y = pt.y - p.h; p.vy = 0; p.grounded = true;
             if (!wasGrounded) {
                 p.scaleY = 0.75; p.scaleX = 1.25;
                 createDust(p.x + p.w/2, p.y + p.h, 7);
@@ -532,30 +501,23 @@ function gameLoop() {
         }
 
         if (pt.coin) {
-            let coinX = pt.x + pt.w / 2;
-            let coinY = pt.y - 24;
-            let dx = (p.x + p.w/2) - coinX;
-            let dy = (p.y + p.h/2) - coinY;
+            let cx = pt.x + pt.w / 2, cy = pt.y - 24;
+            let dx = (p.x + p.w/2) - cx, dy = (p.y + p.h/2) - cy;
             if (Math.sqrt(dx*dx + dy*dy) < 26) {
-                pt.coin = false;
-                score += 10;
+                pt.coin = false; score += 10;
                 document.getElementById('score').innerText = score;
                 playSfx(750, 1100, 'sine', 0.18, 0.12);
-                floatingTexts.push({ x: coinX, y: coinY, text: "+10", alpha: 1 });
+                floatingTexts.push({ x: cx, y: cy, text: "+10", alpha: 1 });
             }
         }
     });
 
-    if (p.grounded && Math.abs(p.vx) > 3 && Math.random() < 0.25) {
-        createDust(p.x + (p.facing === 1 ? 0 : p.w), p.y + p.h, 1);
-    }
+    if (p.grounded && Math.abs(p.vx) > 3 && Math.random() < 0.25) createDust(p.x + (p.facing === 1 ? 0 : p.w), p.y + p.h, 1);
 
     if (p.y > viewportH - 60) {
-        gameRunning = false;
-        playSfx(220, 50, 'sawtooth', 0.35, 0.15);
+        gameRunning = false; playSfx(220, 50, 'sawtooth', 0.35, 0.15);
         if (score > highScore) {
-            highScore = score;
-            localStorage.setItem('edward_highscore', highScore);
+            highScore = score; localStorage.setItem('edward_highscore', highScore);
             document.getElementById('loginHighScore').innerText = highScore;
         }
         document.getElementById('finalScore').innerText = score;
@@ -564,7 +526,7 @@ function gameLoop() {
         return; 
     }
 
-
+    
     ctx.clearRect(0, 0, viewportW, viewportH);
 
     
@@ -572,93 +534,125 @@ function gameLoop() {
     let isNight = (jam >= 18 || jam < 6); 
 
     let skyGrad = ctx.createLinearGradient(0, 0, 0, viewportH);
-    if(isNight) {
-        skyGrad.addColorStop(0, "#050B14");
-        skyGrad.addColorStop(1, "#172033");
-    } else {
-        skyGrad.addColorStop(0, "#6ebbf5"); 
-        skyGrad.addColorStop(1, "#c5e8ff");
-    }
+    skyGrad.addColorStop(0, isNight ? curTheme.night1 : curTheme.sky1);
+    skyGrad.addColorStop(1, isNight ? curTheme.night2 : curTheme.sky2);
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, viewportW, viewportH);
 
-    
-    if(isNight) {
+    if(isNight && curTheme.type === 'earth') {
         ctx.fillStyle = "rgba(255,255,255,0.7)";
-        stars.forEach(s => {
-            ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill();
-        });
+        stars.forEach(s => { ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI*2); ctx.fill(); });
     }
 
     
     let timeOsc = Math.sin(Date.now() * 0.002);
-    if(isNight) {
-        
-        ctx.fillStyle = "#f1f2f6";
-        ctx.beginPath(); ctx.arc(viewportW - 100, 100, 40, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = "#050B14"; 
-        ctx.beginPath(); ctx.arc(viewportW - 110, 90, 35, 0, Math.PI*2); ctx.fill();
-    } else {
-    
-        ctx.fillStyle = "rgba(255, 215, 0, 0.3)"; 
-        ctx.beginPath(); ctx.arc(viewportW - 100, 100, 60 + timeOsc*10, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = "#ffdd59"; 
+    if (curTheme.type === 'earth') {
+        if(isNight) {
+            ctx.fillStyle = "#f1f2f6";
+            ctx.beginPath(); ctx.arc(viewportW - 100, 100, 40, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = curTheme.night1;
+            ctx.beginPath(); ctx.arc(viewportW - 110, 90, 35, 0, Math.PI*2); ctx.fill();
+        } else {
+            ctx.fillStyle = "rgba(255, 215, 0, 0.3)";
+            ctx.beginPath(); ctx.arc(viewportW - 100, 100, 60 + timeOsc*10, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#ffdd59";
+            ctx.beginPath(); ctx.arc(viewportW - 100, 100, 45, 0, Math.PI*2); ctx.fill();
+        }
+    } else if (curTheme.type === 'cyber') {
+      
+        ctx.fillStyle = isNight ? "#00ffff" : "#ff007f";
+        ctx.beginPath(); ctx.arc(viewportW - 100, 100, 50, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = isNight ? curTheme.night1 : curTheme.sky1;
+        for(let i=0; i<5; i++) ctx.fillRect(viewportW - 160, 110 + i*10, 120, 3 + i);
+    } else if (curTheme.type === 'alien') {
+       
+        ctx.fillStyle = isNight ? "#2d98da" : "#eb4d4b";
         ctx.beginPath(); ctx.arc(viewportW - 100, 100, 45, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = isNight ? "rgba(0, 210, 211, 0.6)" : "rgba(240, 147, 43, 0.6)";
+        ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.ellipse(viewportW - 100, 100, 70, 15, 20 * Math.PI/180, 0, Math.PI*2); ctx.stroke();
     }
 
-    ctx.save();
     
- 
     ctx.save();
-    ctx.translate(-cameraX * 0.3, 0); 
-    trees.forEach(tr => {
-        let ty = viewportH - 70; 
-        
-        
-        ctx.fillStyle = curTheme.treeTrunk;
-        ctx.fillRect(tr.x - 10*tr.scale, ty - 100*tr.scale, 20*tr.scale, 100*tr.scale);
-        
-       
-        ctx.fillStyle = curTheme.treeTopDark; 
-        ctx.beginPath();
-        ctx.arc(tr.x, ty - 120*tr.scale, 50*tr.scale, 0, Math.PI*2);
-        ctx.fill();
-
-        ctx.fillStyle = curTheme.treeTop; 
-        ctx.beginPath();
-        ctx.arc(tr.x - 30*tr.scale, ty - 100*tr.scale, 40*tr.scale, 0, Math.PI*2);
-        ctx.arc(tr.x + 30*tr.scale, ty - 100*tr.scale, 40*tr.scale, 0, Math.PI*2);
-        ctx.arc(tr.x, ty - 140*tr.scale, 45*tr.scale, 0, Math.PI*2);
-        ctx.fill();
+    ctx.translate(-cameraX * 0.1, 0); 
+    clouds.forEach(c => {
+        if (curTheme.type === 'earth') {
+            ctx.fillStyle = isNight ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.8)";
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, 30*c.scale, 0, Math.PI*2);
+            ctx.arc(c.x + 25*c.scale, c.y - 10*c.scale, 35*c.scale, 0, Math.PI*2);
+            ctx.arc(c.x + 50*c.scale, c.y, 30*c.scale, 0, Math.PI*2);
+            ctx.fill();
+        } else if (curTheme.type === 'cyber') {
+            ctx.fillStyle = "rgba(0, 255, 255, 0.15)";
+            ctx.fillRect(c.x, c.y, 80*c.scale, 15*c.scale);
+            ctx.fillRect(c.x + 20*c.scale, c.y - 15*c.scale, 50*c.scale, 15*c.scale);
+        } else if (curTheme.type === 'alien') {
+            ctx.fillStyle = "rgba(162, 155, 254, 0.3)";
+            ctx.beginPath(); ctx.ellipse(c.x, c.y, 50*c.scale, 10*c.scale, 0, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = "rgba(253, 121, 168, 0.5)"; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.ellipse(c.x, c.y, 60*c.scale, 15*c.scale, 0, 0, Math.PI*2); ctx.stroke();
+        }
     });
     ctx.restore();
 
+   
+    ctx.save();
+    ctx.translate(-cameraX * 0.3, 0);
+    bgElements.forEach(bg => {
+        let ty = viewportH; 
+        
+        if (curTheme.type === 'earth') {
+            let trunkH = 150 * bg.scale, trunkW = 20 * bg.scale;
+            ctx.fillStyle = "#8B4513";
+            ctx.fillRect(bg.x - trunkW/2, ty - trunkH, trunkW, trunkH + 20); 
+            ctx.fillStyle = "#20bf6b"; ctx.beginPath(); ctx.arc(bg.x, ty - trunkH, 60*bg.scale, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#2d98da"; ctx.beginPath();
+            ctx.arc(bg.x - 35*bg.scale, ty - trunkH + 20*bg.scale, 45*bg.scale, 0, Math.PI*2);
+            ctx.arc(bg.x + 35*bg.scale, ty - trunkH + 20*bg.scale, 45*bg.scale, 0, Math.PI*2);
+            ctx.arc(bg.x, ty - trunkH - 30*bg.scale, 50*bg.scale, 0, Math.PI*2); ctx.fill();
+        } 
+        else if (curTheme.type === 'cyber') {
+            let bw = 60 * bg.scale, bh = 250 * bg.scale;
+            ctx.fillStyle = "#0d0221"; ctx.fillRect(bg.x - bw/2, ty - bh, bw, bh + 20);
+            ctx.strokeStyle = "#ff007f"; ctx.lineWidth = 2; ctx.strokeRect(bg.x - bw/2, ty - bh, bw, bh + 20);
+            ctx.fillStyle = "#00ffff"; 
+            for(let wy = ty - bh + 20*bg.scale; wy < ty - 20; wy += 30*bg.scale) {
+                 if((bg.seed + Math.floor(wy)) % 5 !== 0) ctx.fillRect(bg.x - bw/2 + 10*bg.scale, wy, 15*bg.scale, 15*bg.scale);
+                 if((bg.seed * Math.floor(wy)) % 5 !== 0) ctx.fillRect(bg.x + bw/2 - 25*bg.scale, wy, 15*bg.scale, 15*bg.scale);
+            }
+        } 
+        else if (curTheme.type === 'alien') {
+            let stemH = 140 * bg.scale, stemW = 15 * bg.scale;
+            ctx.fillStyle = "#b2bec3"; ctx.beginPath();
+            ctx.moveTo(bg.x - stemW, ty); ctx.quadraticCurveTo(bg.x - stemW/2, ty - stemH/2, bg.x - stemW, ty - stemH);
+            ctx.lineTo(bg.x + stemW, ty - stemH); ctx.quadraticCurveTo(bg.x + stemW/2, ty - stemH/2, bg.x + stemW, ty); ctx.fill();
+            ctx.fillStyle = "#a29bfe"; ctx.beginPath(); ctx.arc(bg.x, ty - stemH, 70*bg.scale, Math.PI, 0); ctx.fill();
+            ctx.fillStyle = "#fd79a8"; 
+            ctx.beginPath(); ctx.arc(bg.x - 30*bg.scale, ty - stemH - 25*bg.scale, 10*bg.scale, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(bg.x + 30*bg.scale, ty - stemH - 35*bg.scale, 15*bg.scale, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(bg.x, ty - stemH - 50*bg.scale, 12*bg.scale, 0, Math.PI*2); ctx.fill();
+        }
+    });
+    ctx.restore();
+
+    ctx.save();
     ctx.translate(-cameraX, 0);
 
+    
     platforms.forEach(pt => {
-        ctx.fillStyle = "rgba(0,0,0,0.25)";
-        ctx.fillRect(pt.x + 4, pt.y + 6, pt.w, pt.h);
-
-        ctx.fillStyle = curTheme.plat;
-        ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, pt.h, 6); ctx.fill();
-
-        ctx.fillStyle = curTheme.top;
-        ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, 4, [6, 6, 0, 0]); ctx.fill();
-
+        ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(pt.x + 4, pt.y + 6, pt.w, pt.h);
+        ctx.fillStyle = curTheme.plat; ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, pt.h, 6); ctx.fill();
+        ctx.fillStyle = curTheme.top; ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, 4, [6, 6, 0, 0]); ctx.fill();
         if (pt.coin) {
-            coinAngle += 0.04;
-            let scaleC = Math.cos(coinAngle);
-            ctx.save();
-            ctx.translate(pt.x + pt.w/2, pt.y - 22);
-            ctx.scale(scaleC, 1);
-            ctx.fillStyle = "#ffd700";
-            ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = "#ffa500"; ctx.lineWidth = 2; ctx.stroke();
-            ctx.restore();
+            coinAngle += 0.04; let scaleC = Math.cos(coinAngle);
+            ctx.save(); ctx.translate(pt.x + pt.w/2, pt.y - 22); ctx.scale(scaleC, 1);
+            ctx.fillStyle = "#ffd700"; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = "#ffa500"; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
         }
     });
 
-    
     particles.forEach((pt, idx) => {
         if(pt.type === 'dust') {
             ctx.fillStyle = `rgba(255, 255, 255, ${pt.alpha})`;
@@ -668,33 +662,24 @@ function gameLoop() {
         if (pt.alpha <= 0) particles.splice(idx, 1);
     });
 
-    
     floatingTexts.forEach((ft, idx) => {
-        ctx.fillStyle = `rgba(255, 215, 0, ${ft.alpha})`;
-        ctx.font = "bold 16px system-ui";
-        ctx.fillText(ft.text, ft.x - 15, ft.y);
-        ft.y -= 1.2; ft.alpha -= 0.02;
+        ctx.fillStyle = `rgba(255, 215, 0, ${ft.alpha})`; ctx.font = "bold 16px system-ui";
+        ctx.fillText(ft.text, ft.x - 15, ft.y); ft.y -= 1.2; ft.alpha -= 0.02;
         if (ft.alpha <= 0) floatingTexts.splice(idx, 1);
     });
 
-   
+    
     ctx.save();
     ctx.translate(p.x + p.w/2, p.y + p.h);
-
     if (p.grounded) {
         ctx.fillStyle = "rgba(0,0,0,0.3)";
         ctx.beginPath(); ctx.ellipse(0, -1, 12 * p.scaleX, 4, 0, 0, Math.PI * 2); ctx.fill();
     }
-
-    let tilt = p.vx * 0.035;
-    ctx.rotate(tilt);
-    ctx.scale(p.scaleX * p.facing, p.scaleY);
-
+    ctx.rotate(p.vx * 0.035); ctx.scale(p.scaleX * p.facing, p.scaleY);
     if (Math.abs(p.vx) > 0.2 && p.grounded) p.walkCycle += 0.25;
     let legSwing = Math.sin(p.walkCycle) * 8;
 
-    ctx.fillStyle = "#e11d48";
-    ctx.beginPath(); ctx.moveTo(-2, -30);
+    ctx.fillStyle = "#e11d48"; ctx.beginPath(); ctx.moveTo(-2, -30);
     ctx.quadraticCurveTo(-14 - p.vx * 2.5, -24 + Math.sin(Date.now()*0.01)*3, -18 - p.vx * 3.5, -12);
     ctx.quadraticCurveTo(-8, -20, -2, -26); ctx.fill();
 
@@ -702,20 +687,13 @@ function gameLoop() {
     ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0);
     ctx.moveTo(4, -12); ctx.lineTo(4 - legSwing, 0); ctx.stroke();
 
-    ctx.fillStyle = playerColor;
-    ctx.beginPath(); ctx.roundRect(-10, -34, 20, 22, 6); ctx.fill();
-
-    ctx.fillStyle = "#ffdbac";
-    ctx.beginPath(); ctx.arc(0, -40, 10, 0, Math.PI * 2); ctx.fill();
-
-    ctx.fillStyle = "#0f172a";
-    let eyeOffsetX = p.facing * 3;
-    ctx.beginPath(); ctx.arc(eyeOffsetX, -41, 2.5, 0, Math.PI * 2); ctx.fill();
-
+    ctx.fillStyle = playerColor; ctx.beginPath(); ctx.roundRect(-10, -34, 20, 22, 6); ctx.fill();
+    ctx.fillStyle = "#ffdbac"; ctx.beginPath(); ctx.arc(0, -40, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#0f172a"; ctx.beginPath(); ctx.arc(p.facing * 3, -41, 2.5, 0, Math.PI * 2); ctx.fill();
     ctx.restore(); 
     ctx.restore(); 
 
-   
+ 
     let timeLava = Date.now() * 0.003;
     ctx.fillStyle = curTheme.lava;
     ctx.beginPath(); ctx.moveTo(0, viewportH);
@@ -726,7 +704,7 @@ function gameLoop() {
     ctx.lineTo(viewportW, viewportH);
     ctx.fill();
 
-   
+    
     if (dimensionFlash > 0) {
         ctx.fillStyle = `rgba(255, 255, 255, ${dimensionFlash})`;
         ctx.fillRect(0, 0, viewportW, viewportH);
