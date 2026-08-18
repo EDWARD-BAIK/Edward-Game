@@ -206,7 +206,7 @@
 <canvas id="game"></canvas>
 
 <script>
-
+// --- AUDIO SYSTEM ---
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx;
 function initAudio() {
@@ -232,6 +232,7 @@ let playerColor = "#ff4500";
 let highScore = localStorage.getItem('edward_highscore') || 0;
 let animId; 
 document.getElementById('loginHighScore').innerText = highScore;
+
 
 window.addEventListener('load', () => {
     let bar = document.getElementById('progressBar');
@@ -318,7 +319,6 @@ let clouds = [];
 let currentDimension = 0;
 let dimensionFlash = 0;
 
-
 const themes = [
     { type: 'earth', plat: "#1e293b", top: "#00d2d3", lava: "#ff4500", sky1: "#6ebbf5", sky2: "#c5e8ff", night1: "#050B14", night2: "#172033" }, 
     { type: 'cyber', plat: "#2f002c", top: "#ff007f", lava: "#00ffff", sky1: "#10002b", sky2: "#3c096c", night1: "#050014", night2: "#190033" },
@@ -343,11 +343,12 @@ function resetGame() {
         stars.push({ x: Math.random() * viewportW, y: Math.random() * viewportH * 0.7, size: Math.random() * 1.5 });
     }
 
+   
     bgElements = [];
-    for(let i=0; i<10; i++){
+    for(let i=0; i<5; i++){
         bgElements.push({ 
             x: Math.random() * viewportW * 1.5, 
-            scale: 0.4 + Math.random()*0.6,
+            scale: 0.5 + Math.random()*0.5,
             seed: Math.floor(Math.random() * 1000)
         });
     }
@@ -394,17 +395,16 @@ function updateWorldElements() {
     platforms = platforms.filter(pt => pt.x + pt.w > cameraX - 200);
 
     let lastBg = bgElements.length > 0 ? bgElements[bgElements.length - 1] : { x: cameraX };
-    while (lastBg.x < (cameraX * 0.3) + viewportW + 300) { 
+    while (lastBg.x < (cameraX * 0.3) + viewportW + 400) { 
         bgElements.push({
-            x: lastBg.x + 120 + Math.random() * 200,
-            scale: 0.4 + Math.random() * 0.6,
+            x: lastBg.x + 250 + Math.random() * 200, // Jarak diperlebar supaya pohon tidak rapat/sesak
+            scale: 0.5 + Math.random() * 0.5,
             seed: Math.floor(Math.random() * 1000)
         });
         lastBg = bgElements[bgElements.length - 1];
     }
     bgElements = bgElements.filter(bg => bg.x > (cameraX * 0.3) - 200);
 
-    
     let camParallaxX = cameraX * 0.1;
     clouds.forEach(c => {
         c.x += c.speed;
@@ -453,7 +453,7 @@ function gameLoop() {
     p.vx = Math.max(-6, Math.min(6, p.vx));
     p.x += p.vx; p.lastY = p.y; 
 
-    p.vy += 0.75;
+    p.vy += 0.75; 
     p.y += p.vy;
 
     if (p.grounded) p.coyoteTimer = 7; else p.coyoteTimer--;
@@ -476,7 +476,6 @@ function gameLoop() {
 
     let wasGrounded = p.grounded;
     p.grounded = false;
-
 
     let dimCheck = Math.floor(score / 50);
     if(dimCheck > currentDimension && score > 0) {
@@ -525,10 +524,9 @@ function gameLoop() {
         return; 
     }
 
-    
+   
     ctx.clearRect(0, 0, viewportW, viewportH);
 
-    
     let jam = new Date().getHours();
     let isNight = (jam >= 18 || jam < 6); 
 
@@ -538,13 +536,11 @@ function gameLoop() {
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, viewportW, viewportH);
 
-   
     if(isNight && curTheme.type === 'earth') {
         ctx.fillStyle = "#ffffff";
         stars.forEach(s => { ctx.fillRect(s.x, s.y, s.size*1.5, s.size*1.5); });
     }
 
- 
     let timeOsc = Math.sin(Date.now() * 0.002);
     if (curTheme.type === 'earth') {
         if(isNight) {
@@ -559,13 +555,11 @@ function gameLoop() {
             ctx.beginPath(); ctx.arc(viewportW - 100, 100, 45, 0, Math.PI*2); ctx.fill();
         }
     } else if (curTheme.type === 'cyber') {
-        
         ctx.fillStyle = isNight ? "#00ffff" : "#ff007f";
         ctx.beginPath(); ctx.arc(viewportW - 100, 100, 50, 0, Math.PI*2); ctx.fill();
         ctx.fillStyle = isNight ? curTheme.night1 : curTheme.sky1;
         for(let i=0; i<5; i++) ctx.fillRect(viewportW - 160, 110 + i*10, 120, 3 + i);
     } else if (curTheme.type === 'alien') {
-      
         ctx.fillStyle = isNight ? "#2d98da" : "#eb4d4b";
         ctx.beginPath(); ctx.arc(viewportW - 100, 100, 45, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = isNight ? "rgba(0, 210, 211, 0.6)" : "rgba(240, 147, 43, 0.6)";
@@ -573,12 +567,11 @@ function gameLoop() {
         ctx.beginPath(); ctx.ellipse(viewportW - 100, 100, 70, 15, 20 * Math.PI/180, 0, Math.PI*2); ctx.stroke();
     }
 
-   
+    
     ctx.save();
     ctx.translate(-cameraX * 0.1, 0); 
     clouds.forEach(c => {
         if (curTheme.type === 'earth') {
-       
             ctx.fillStyle = isNight ? "#94a3b8" : "#ffffff"; 
             ctx.beginPath();
             ctx.arc(c.x, c.y, 30*c.scale, 0, Math.PI*2);
@@ -598,21 +591,24 @@ function gameLoop() {
     });
     ctx.restore();
 
-  
+
     ctx.save();
     ctx.translate(-cameraX * 0.3, 0);
     bgElements.forEach(bg => {
-        let ty = viewportH; // Akar menancap kuat di absolute dasar layar
+        let ty = viewportH; 
         
         if (curTheme.type === 'earth') {
-            let trunkH = 150 * bg.scale, trunkW = 20 * bg.scale;
+            let trunkH = 140 * bg.scale, trunkW = 18 * bg.scale;
             ctx.fillStyle = "#8B4513";
-            ctx.fillRect(bg.x - trunkW/2, ty - trunkH, trunkW, trunkH + 20); // +20 biar nyebur ke lava
-            ctx.fillStyle = "#20bf6b"; ctx.beginPath(); ctx.arc(bg.x, ty - trunkH, 60*bg.scale, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = "#2d98da"; ctx.beginPath();
-            ctx.arc(bg.x - 35*bg.scale, ty - trunkH + 20*bg.scale, 45*bg.scale, 0, Math.PI*2);
-            ctx.arc(bg.x + 35*bg.scale, ty - trunkH + 20*bg.scale, 45*bg.scale, 0, Math.PI*2);
-            ctx.arc(bg.x, ty - trunkH - 30*bg.scale, 50*bg.scale, 0, Math.PI*2); ctx.fill();
+            ctx.fillRect(bg.x - trunkW/2, ty - trunkH, trunkW, trunkH + 20); 
+            
+        
+            ctx.fillStyle = "#2ecc71"; 
+            ctx.beginPath(); 
+            ctx.arc(bg.x, ty - trunkH, 55*bg.scale, 0, Math.PI*2); 
+            ctx.arc(bg.x - 30*bg.scale, ty - trunkH + 15*bg.scale, 40*bg.scale, 0, Math.PI*2);
+            ctx.arc(bg.x + 30*bg.scale, ty - trunkH + 15*bg.scale, 40*bg.scale, 0, Math.PI*2);
+            ctx.fill();
         } 
         else if (curTheme.type === 'cyber') {
             let bw = 60 * bg.scale, bh = 250 * bg.scale;
@@ -641,7 +637,6 @@ function gameLoop() {
     ctx.save();
     ctx.translate(-cameraX, 0);
 
-   
     platforms.forEach(pt => {
         ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(pt.x + 4, pt.y + 6, pt.w, pt.h);
         ctx.fillStyle = curTheme.plat; ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, pt.h, 6); ctx.fill();
@@ -669,7 +664,6 @@ function gameLoop() {
         if (ft.alpha <= 0) floatingTexts.splice(idx, 1);
     });
 
-  
     ctx.save();
     ctx.translate(p.x + p.w/2, p.y + p.h);
     if (p.grounded) {
@@ -694,7 +688,6 @@ function gameLoop() {
     ctx.restore(); 
     ctx.restore(); 
 
-    
     let timeLava = Date.now() * 0.003;
     ctx.fillStyle = curTheme.lava;
     ctx.beginPath(); ctx.moveTo(0, viewportH);
@@ -705,7 +698,6 @@ function gameLoop() {
     ctx.lineTo(viewportW + 50, viewportH);
     ctx.fill();
 
-    
     if (dimensionFlash > 0) {
         ctx.fillStyle = `rgba(255, 255, 255, ${dimensionFlash})`;
         ctx.fillRect(0, 0, viewportW, viewportH);
