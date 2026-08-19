@@ -128,15 +128,27 @@
         #leftBtn { left: 20px; } 
         #rightBtn { left: 100px; }
 
+      
         #flipBtn {
-            position: absolute; bottom: 115px; right: 25px; width: 70px; height: 70px;
-            border-radius: 50%; background: linear-gradient(135deg, #a855f7, #6366f1);
-            color: white; font-size: 12px; font-weight: 900; z-index: 100;
-            border: 2px solid #ffffff; display: flex; align-items: center;
-            justify-content: center; box-shadow: 0 8px 20px rgba(168, 85, 247, 0.5);
+            position: absolute; 
+            bottom: 35px;       
+            right: 110px;       
+            width: 55px;        
+            height: 55px;       
+            border-radius: 50%; 
+            background: rgba(14, 165, 233, 0.35); 
+            color: white; 
+            font-size: 10px; 
+            font-weight: 900; 
+            z-index: 100;
+            border: 1.5px solid rgba(255, 255, 255, 0.6); 
+            display: flex; align-items: center; justify-content: center; 
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+            backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
             letter-spacing: 0.5px;
+            transition: all 0.1s;
         }
-        #flipBtn:active { transform: scale(0.92); }
+        #flipBtn:active { transform: scale(0.92); background: rgba(14, 165, 233, 0.6); }
 
         #jumpBtn { 
             position: absolute; bottom: 25px; right: 20px; width: 80px; height: 80px; 
@@ -364,7 +376,6 @@ const skinsData = [
     { id: 'spiderman', name: 'Spider-Man', price: 400 },
     { id: 'ironman', name: 'Iron Man', price: 450 },
     { id: 'sonic', name: 'Sonic', price: 500 },
-    
     { id: 'bbb_biasa', name: 'Boboiboy', price: 500 },
     { id: 'bbb_petir', name: 'BBB Petir', price: 700 },
     { id: 'bbb_angin', name: 'BBB Angin', price: 700 },
@@ -383,7 +394,6 @@ const skinsData = [
     { id: 'bbb_supra', name: 'BBB Supra', price: 2000 }
 ];
 
-
 function getAuraColors(skinId, baseColor) {
     switch(skinId) {
         case 'default': return { p: baseColor, s: '#ffaa00' };
@@ -400,7 +410,6 @@ function getAuraColors(skinId, baseColor) {
         case 'spiderman': return { p: '#ef4444', s: '#2563eb' };
         case 'ironman': return { p: '#eab308', s: '#dc2626' };
         case 'sonic': return { p: '#2563eb', s: '#38bdf8' };
-       
         case 'bbb_biasa': return { p: '#ff5722', s: '#ffaa00' };
         case 'bbb_petir': return { p: '#facc15', s: '#ffffff' };
         case 'bbb_angin': return { p: '#38bdf8', s: '#e0f2fe' };
@@ -606,7 +615,7 @@ function resetGame() {
         grounded: false, scaleX: 1, scaleY: 1, 
         walkCycle: 0, facing: 1, coyoteTimer: 0, 
         jumpsLeft: 2,
-        isFlipping: false, flipAngle: 0 
+        isFlipping: false, flipProgress: 0
     };
     
     platforms = [
@@ -652,7 +661,7 @@ function resetGame() {
 function triggerFlip() {
     if (!p.isFlipping) {
         p.isFlipping = true;
-        p.flipAngle = 0;
+        p.flipProgress = 0;
         if (p.grounded || p.coyoteTimer > 0) {
             p.vy = -15;
             p.grounded = false;
@@ -756,7 +765,6 @@ document.getElementById('flipBtn').addEventListener('pointerdown', e => {
 
 let coinAngle = 0;
 
-
 function drawPlayerAura(ctx, skinId, baseColor) {
     let aura = getAuraColors(skinId, baseColor);
     let pulse = Math.sin(Date.now() * 0.008) * 5;
@@ -775,7 +783,6 @@ function drawPlayerAura(ctx, skinId, baseColor) {
     ctx.restore();
 }
 
-
 function drawBoboiboyCap(ctx, capColor, visorColor, emblem = "B") {
     ctx.fillStyle = capColor;
     ctx.beginPath(); ctx.arc(0, -43, 11.5, Math.PI, Math.PI * 2); ctx.fill();
@@ -790,8 +797,16 @@ function drawBoboiboyCap(ctx, capColor, visorColor, emblem = "B") {
 function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
     const drawLegs = (c) => {
         ctx.strokeStyle = c; ctx.lineWidth = 4.5; ctx.lineCap = "round";
-        ctx.beginPath(); ctx.moveTo(-5, -12); ctx.lineTo(-5 + legSwing, 0); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(5, -12); ctx.lineTo(5 - legSwing, 0); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(4, -12); ctx.lineTo(4 - legSwing, 0); ctx.stroke();
+    };
+    const drawArm = (c, isBack) => {
+        ctx.strokeStyle = c; ctx.lineWidth = 4; ctx.lineCap = "round";
+        if (isBack) { 
+            ctx.beginPath(); ctx.moveTo(-2, -30); ctx.lineTo(-2 - legSwing * 1.5, -16); ctx.stroke();
+        } else {      
+            ctx.beginPath(); ctx.moveTo(2, -30); ctx.lineTo(2 + legSwing * 1.5, -16); ctx.stroke();
+        }
     };
     const drawBody = (c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.roundRect(-11, -36, 22, 24, 7); ctx.fill(); };
     const drawHead = (c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(0, -42, 11, 0, Math.PI * 2); ctx.fill(); };
@@ -804,99 +819,74 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
     switch(skinId) {
        
         case 'bbb_biasa':
-            drawLegs("#1e293b"); drawBody("#ff5722"); drawHead("#ffdbac");
-            drawBoboiboyCap(ctx, "#000000", "#ff5722", "B");
-            drawEye(4, -42, 2, "#000");
-            break;
+            drawLegs("#1e293b"); drawArm("#ff5722", true); drawBody("#ff5722"); drawArm("#ff5722", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#000000", "#ff5722", "B"); drawEye(4, -42, 2, "#000"); break;
         case 'bbb_petir':
-            drawLegs("#111827"); drawBody("#dc2626"); drawHead("#ffdbac");
-            drawBoboiboyCap(ctx, "#111827", "#facc15", "⚡");
-            drawEye(4, -42, 2, "#facc15");
-            break;
+            drawLegs("#111827"); drawArm("#dc2626", true); drawBody("#dc2626"); drawArm("#dc2626", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#111827", "#facc15", "⚡"); drawEye(4, -42, 2, "#facc15"); break;
         case 'bbb_angin':
-            drawLegs("#1e293b"); drawBody("#0288d1"); drawHead("#ffdbac");
-            drawBoboiboyCap(ctx, "#0288d1", "#ffffff", "🌀");
-            drawEye(4, -42, 2, "#38bdf8");
-            break;
+            drawLegs("#1e293b"); drawArm("#0288d1", true); drawBody("#0288d1"); drawArm("#0288d1", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#0288d1", "#ffffff", "🌀"); drawEye(4, -42, 2, "#38bdf8"); break;
         case 'bbb_tanah':
-            drawLegs("#3f2e1a"); drawBody("#78350f"); drawHead("#ffdbac");
-            drawBoboiboyCap(ctx, "#78350f", "#b45309", "🪨");
-            drawEye(4, -42, 2, "#d97706");
-            break;
+            drawLegs("#3f2e1a"); drawArm("#78350f", true); drawBody("#78350f"); drawArm("#78350f", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#78350f", "#b45309", "🪨"); drawEye(4, -42, 2, "#d97706"); break;
         case 'bbb_daun':
-            drawLegs("#14532d"); drawBody("#16a34a"); drawHead("#ffdbac");
-            drawBoboiboyCap(ctx, "#16a34a", "#86efac", "🍃");
-            drawEye(4, -42, 2, "#22c55e");
-            break;
+            drawLegs("#14532d"); drawArm("#16a34a", true); drawBody("#16a34a"); drawArm("#16a34a", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#16a34a", "#86efac", "🍃"); drawEye(4, -42, 2, "#22c55e"); break;
         case 'bbb_api':
-            drawLegs("#450a0a"); drawBody("#ff4500"); drawHead("#ffdbac");
-            drawBoboiboyCap(ctx, "#ea580c", "#facc15", "🔥");
-            drawEye(4, -42, 2, "#ff2200");
-            break;
+            drawLegs("#450a0a"); drawArm("#ff4500", true); drawBody("#ff4500"); drawArm("#ff4500", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#ea580c", "#facc15", "🔥"); drawEye(4, -42, 2, "#ff2200"); break;
         case 'bbb_air':
-            drawLegs("#083344"); drawBody("#06b6d4"); drawHead("#ffdbac");
-            drawBoboiboyCap(ctx, "#06b6d4", "#ffffff", "💧");
-            drawEye(4, -42, 2, "#38bdf8");
-            break;
+            drawLegs("#083344"); drawArm("#06b6d4", true); drawBody("#06b6d4"); drawArm("#06b6d4", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#06b6d4", "#ffffff", "💧"); drawEye(4, -42, 2, "#38bdf8"); break;
         case 'bbb_cahaya':
-            drawLegs("#fef08a"); drawBody("#ffffff"); drawHead("#ffdbac");
-            drawBoboiboyCap(ctx, "#ffffff", "#facc15", "✨");
-            drawEye(4, -42, 2, "#eab308");
-            break;
+            drawLegs("#fef08a"); drawArm("#ffffff", true); drawBody("#ffffff"); drawArm("#ffffff", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#ffffff", "#facc15", "✨"); drawEye(4, -42, 2, "#eab308"); break;
         case 'bbb_halilintar':
-            drawCape("#dc2626"); drawLegs("#000000"); drawBody("#991b1b"); drawHead("#ffdbac");
-            drawBoboiboyCap(ctx, "#000000", "#dc2626", "⚡");
-            drawEye(4, -42, 2, "#ef4444");
-            break;
+            drawCape("#dc2626"); drawLegs("#000000"); drawArm("#991b1b", true); drawBody("#991b1b"); drawArm("#991b1b", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#000000", "#dc2626", "⚡"); drawEye(4, -42, 2, "#ef4444"); break;
         case 'bbb_taufan':
-            drawLegs("#0c4a6e"); drawBody("#0288d1"); drawHead("#ffdbac");
-            drawBoboiboyCap(ctx, "#0288d1", "#00ffff", "🌪️");
-            drawEye(4, -42, 2, "#00ffff");
-            break;
+            drawLegs("#0c4a6e"); drawArm("#0288d1", true); drawBody("#0288d1"); drawArm("#0288d1", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#0288d1", "#00ffff", "🌪️"); drawEye(4, -42, 2, "#00ffff"); break;
         case 'bbb_gempa':
-            drawLegs("#451a03"); drawBody("#b45309"); drawHead("#ffdbac");
-            drawBoboiboyCap(ctx, "#78350f", "#f59e0b", "💎");
-            drawEye(4, -42, 2, "#f59e0b");
-            break;
+            drawLegs("#451a03"); drawArm("#b45309", true); drawBody("#b45309"); drawArm("#b45309", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#78350f", "#f59e0b", "💎"); drawEye(4, -42, 2, "#f59e0b"); break;
         case 'bbb_blaze':
-            drawLegs("#7c2d12"); drawBody("#dc2626"); drawHead("#ffdbac");
-            drawBoboiboyCap(ctx, "#ea580c", "#ff3d00", "💥");
-            drawEye(4, -42, 2, "#ffea00");
-            break;
+            drawLegs("#7c2d12"); drawArm("#dc2626", true); drawBody("#dc2626"); drawArm("#dc2626", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#ea580c", "#ff3d00", "💥"); drawEye(4, -42, 2, "#ffea00"); break;
         case 'bbb_ice':
-            drawLegs("#164e63"); drawBody("#0891b2"); drawHead("#ffdbac");
-            drawBoboiboyCap(ctx, "#0891b2", "#a5f3fc", "❄️");
-            drawEye(4, -42, 2, "#a5f3fc");
-            break;
+            drawLegs("#164e63"); drawArm("#0891b2", true); drawBody("#0891b2"); drawArm("#0891b2", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#0891b2", "#a5f3fc", "❄️"); drawEye(4, -42, 2, "#a5f3fc"); break;
         case 'bbb_solar':
-            drawLegs("#1e293b"); drawBody("#ffffff"); drawHead("#ffdbac");
-            ctx.fillStyle = "#facc15"; ctx.fillRect(-11, -30, 22, 5); // Jaket Solar
+            drawLegs("#1e293b"); drawArm("#ffffff", true); drawBody("#ffffff"); 
+            ctx.fillStyle = "#facc15"; ctx.fillRect(-11, -30, 22, 5); 
+            drawArm("#ffffff", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#ffffff", "#facc15", "☀️");
-            ctx.fillStyle = "#000"; ctx.fillRect(2, -44, 8, 4); // Kacamata Solar
-            break;
+            ctx.fillStyle = "#000"; ctx.fillRect(2, -44, 8, 4); break;
         case 'bbb_frostfire':
-            drawLegs("#1e1b4b"); drawBody("#ff4500"); drawHead("#ffdbac");
-            ctx.fillStyle = "#06b6d4"; ctx.fillRect(0, -36, 11, 24); // Setengah Es
-            drawBoboiboyCap(ctx, "#ea580c", "#06b6d4", "🔥❄️");
-            drawEye(4, -42, 2, "#00ffff");
-            break;
+            drawLegs("#1e1b4b"); drawArm("#ff4500", true); drawBody("#ff4500");
+            ctx.fillStyle = "#06b6d4"; ctx.fillRect(0, -36, 11, 24); 
+            drawArm("#06b6d4", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#ea580c", "#06b6d4", "🔥❄️"); drawEye(4, -42, 2, "#00ffff"); break;
         case 'bbb_supra':
-            drawCape("#a855f7"); drawLegs("#0f172a"); drawBody("#38bdf8"); drawHead("#ffdbac");
+            drawCape("#a855f7"); drawLegs("#0f172a"); drawArm("#38bdf8", true); drawBody("#38bdf8"); 
             ctx.fillStyle = "#a855f7"; ctx.fillRect(-11, -30, 22, 6);
-            drawBoboiboyCap(ctx, "#a855f7", "#ffffff", "👑");
-            drawEye(4, -42, 2, "#c084fc");
-            break;
+            drawArm("#38bdf8", false); drawHead("#ffdbac");
+            drawBoboiboyCap(ctx, "#a855f7", "#ffffff", "👑"); drawEye(4, -42, 2, "#c084fc"); break;
 
        
         case 'spongebob':
             ctx.strokeStyle = "#facc15"; ctx.lineWidth = 3.5; ctx.lineCap = "round";
             ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(4, -12); ctx.lineTo(4 - legSwing, 0); ctx.stroke();
+            
+            ctx.beginPath(); ctx.moveTo(-13, -25); ctx.lineTo(-13 - legSwing*1.5, -15); ctx.stroke();
             ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(-4 + legSwing, 0, 3, 0, Math.PI*2); ctx.arc(4 - legSwing, 0, 3, 0, Math.PI*2); ctx.fill();
             ctx.fillStyle = "#facc15"; ctx.fillRect(-13, -40, 26, 22); 
             ctx.fillStyle = "#fff"; ctx.fillRect(-13, -18, 26, 6); 
             ctx.fillStyle = "#8b4513"; ctx.fillRect(-13, -12, 26, 6); 
             ctx.fillStyle = "#ef4444"; ctx.fillRect(-2, -18, 4, 8); 
+            ctx.beginPath(); ctx.moveTo(13, -25); ctx.lineTo(13 + legSwing*1.5, -15); ctx.stroke(); 
             drawEye(2, -30, 4, "#fff"); drawEye(11, -30, 4, "#fff");
             drawEye(3, -30, 1.5, "#3b82f6"); drawEye(12, -30, 1.5, "#3b82f6");
             break;
@@ -904,76 +894,61 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
             ctx.strokeStyle = "#84cc16"; ctx.lineWidth = 4.5; ctx.lineCap = "round";
             ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0); ctx.stroke();
             ctx.beginPath(); ctx.moveTo(4, -12); ctx.lineTo(4 - legSwing, 0); ctx.stroke();
+            
+            ctx.strokeStyle = "#f472b6"; ctx.beginPath(); ctx.moveTo(-10, -25); ctx.lineTo(-10 - legSwing, -15); ctx.stroke();
             ctx.fillStyle = "#84cc16"; ctx.fillRect(-11, -18, 22, 8); 
             ctx.fillStyle = "#a855f7"; ctx.fillRect(-6, -16, 4, 4); ctx.fillRect(4, -14, 4, 4); 
             ctx.fillStyle = "#f472b6"; ctx.beginPath(); ctx.moveTo(-11, -18); ctx.lineTo(11, -18); ctx.lineTo(0, -44); ctx.fill(); 
+            ctx.beginPath(); ctx.moveTo(10, -25); ctx.lineTo(10 + legSwing, -15); ctx.stroke(); 
             drawEye(2, -30, 3, "#fff"); drawEye(9, -30, 3, "#fff");
             drawEye(3, -30, 1, "#000"); drawEye(10, -30, 1, "#000");
             break;
         case 'ninja':
-            drawLegs("#1e293b"); drawBody("#1e293b"); drawHead("#1e293b");
+            drawLegs("#1e293b"); drawArm("#1e293b", true); drawBody("#1e293b"); drawArm("#1e293b", false); drawHead("#1e293b");
             ctx.fillStyle = "#ffdbac"; ctx.fillRect(0, -47, 8, 6);
-            ctx.fillStyle = "#ef4444"; ctx.fillRect(-11, -49, 22, 3);
-            drawEye(4, -44, 1.5, "#000");
-            break;
+            ctx.fillStyle = "#ef4444"; ctx.fillRect(-11, -49, 22, 3); drawEye(4, -44, 1.5, "#000"); break;
         case 'mario':
-            drawLegs("#3b82f6"); drawBody("#ef4444"); 
+            drawLegs("#3b82f6"); drawArm("#ef4444", true); drawBody("#ef4444"); 
             ctx.fillStyle = "#3b82f6"; ctx.fillRect(-9, -28, 18, 14); 
-            drawHead("#ffdbac");
-            ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(0, -44, 11, 0, Math.PI, true); ctx.fill();
-            drawEye(4, -44, 1.5);
-            break;
+            drawArm("#ef4444", false); drawHead("#ffdbac");
+            ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(0, -44, 11, 0, Math.PI, true); ctx.fill(); drawEye(4, -44, 1.5); break;
         case 'luigi':
-            drawLegs("#3b82f6"); drawBody("#22c55e"); 
+            drawLegs("#3b82f6"); drawArm("#22c55e", true); drawBody("#22c55e"); 
             ctx.fillStyle = "#3b82f6"; ctx.fillRect(-9, -28, 18, 14); 
-            drawHead("#ffdbac");
-            ctx.fillStyle = "#22c55e"; ctx.beginPath(); ctx.arc(0, -44, 11, 0, Math.PI, true); ctx.fill();
-            drawEye(4, -44, 1.5);
-            break;
+            drawArm("#22c55e", false); drawHead("#ffdbac");
+            ctx.fillStyle = "#22c55e"; ctx.beginPath(); ctx.arc(0, -44, 11, 0, Math.PI, true); ctx.fill(); drawEye(4, -44, 1.5); break;
         case 'pikachu':
             drawLegs("#facc15"); drawBody("#facc15"); drawHead("#facc15");
             ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.moveTo(-4, -50); ctx.lineTo(-13, -63); ctx.lineTo(0, -50); ctx.fill();
             ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.moveTo(4, -50); ctx.lineTo(13, -63); ctx.lineTo(0, -50); ctx.fill();
-            drawEye(4, -44, 2); ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(0, -40, 2.5, 0, Math.PI*2); ctx.fill();
-            break;
+            drawEye(4, -44, 2); ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(0, -40, 2.5, 0, Math.PI*2); ctx.fill(); break;
         case 'zombie':
-            drawLegs("#4b5563"); drawBody("#6366f1"); drawHead("#4ade80");
-            drawEye(2, -44, 2, "#fff"); drawEye(2, -44, 0.5, "#ef4444");
-            break;
+            drawLegs("#4b5563"); drawArm("#6366f1", true); drawBody("#6366f1"); drawArm("#6366f1", false); drawHead("#4ade80");
+            drawEye(2, -44, 2, "#fff"); drawEye(2, -44, 0.5, "#ef4444"); break;
         case 'astronaut':
-            drawLegs("#f8fafc"); drawBody("#f8fafc"); drawHead("#f8fafc");
-            ctx.fillStyle = "#38bdf8"; ctx.beginPath(); ctx.roundRect(0, -48, 13, 11, 4); ctx.fill(); 
-            break;
+            drawLegs("#f8fafc"); drawArm("#f8fafc", true); drawBody("#f8fafc"); drawArm("#f8fafc", false); drawHead("#f8fafc");
+            ctx.fillStyle = "#38bdf8"; ctx.beginPath(); ctx.roundRect(0, -48, 13, 11, 4); ctx.fill(); break;
         case 'batman':
-            drawCape("#111827"); drawLegs("#111827"); drawBody("#64748b"); drawHead("#111827");
-            ctx.fillStyle = "#ffdbac"; ctx.fillRect(-3, -40, 8, 4); 
-            drawEye(3, -44, 1.5, "#fff");
-            break;
+            drawCape("#111827"); drawLegs("#111827"); drawArm("#64748b", true); drawBody("#64748b"); drawArm("#64748b", false); drawHead("#111827");
+            ctx.fillStyle = "#ffdbac"; ctx.fillRect(-3, -40, 8, 4); drawEye(3, -44, 1.5, "#fff"); break;
         case 'superman':
-            drawCape("#ef4444"); drawLegs("#3b82f6"); drawBody("#3b82f6"); drawHead("#ffdbac");
-            drawEye(4, -44, 1.5);
-            break;
+            drawCape("#ef4444"); drawLegs("#3b82f6"); drawArm("#3b82f6", true); drawBody("#3b82f6"); drawArm("#3b82f6", false); drawHead("#ffdbac"); drawEye(4, -44, 1.5); break;
         case 'spiderman':
-            drawLegs("#3b82f6"); drawBody("#ef4444"); drawHead("#ef4444");
-            ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(5, -44, 4.5, 6.5, Math.PI/8, 0, Math.PI*2); ctx.fill();
-            break;
+            drawLegs("#3b82f6"); drawArm("#ef4444", true); drawBody("#ef4444"); drawArm("#ef4444", false); drawHead("#ef4444");
+            ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(5, -44, 4.5, 6.5, Math.PI/8, 0, Math.PI*2); ctx.fill(); break;
         case 'ironman':
-            drawLegs("#ef4444"); drawBody("#ef4444"); drawHead("#ef4444");
-            ctx.fillStyle = "#facc15"; ctx.fillRect(-7, -48, 14, 13); 
-            drawEye(4, -44, 1.5, "#38bdf8");
-            break;
+            drawLegs("#ef4444"); drawArm("#ef4444", true); drawBody("#ef4444"); drawArm("#ef4444", false); drawHead("#ef4444");
+            ctx.fillStyle = "#facc15"; ctx.fillRect(-7, -48, 14, 13); drawEye(4, -44, 1.5, "#38bdf8"); break;
         case 'sonic':
-            drawLegs("#ef4444"); drawBody("#3b82f6"); drawHead("#3b82f6");
-            drawEye(5, -44, 2, "#fff");
-            break;
+            drawLegs("#ef4444"); drawArm("#3b82f6", true); drawBody("#3b82f6"); drawArm("#3b82f6", false); drawHead("#3b82f6");
+            drawEye(5, -44, 2, "#fff"); break;
         case 'default':
         default:
             ctx.fillStyle = "#e11d48"; ctx.beginPath(); ctx.moveTo(-2, -32);
             ctx.quadraticCurveTo(-15 - p.vx * 2.5, -26 + Math.sin(Date.now()*0.01)*3, -19 - p.vx * 3.5, -13);
             ctx.quadraticCurveTo(-9, -22, -2, -28); ctx.fill();
-            drawLegs("#0f172a");
-            drawBody(baseColor); drawHead("#ffdbac"); drawEye(3, -43, 2.5, "#0f172a");
-            break;
+            drawLegs("#0f172a"); drawArm(baseColor, true); drawBody(baseColor); drawArm(baseColor, false); 
+            drawHead("#ffdbac"); drawEye(3, -43, 2.5, "#0f172a"); break;
     }
 }
 
@@ -1022,9 +997,9 @@ function gameLoop() {
 
     
     if (p.isFlipping) {
-        p.flipAngle += 0.28;
-        if (p.flipAngle >= Math.PI * 2) {
-            p.flipAngle = 0;
+        p.flipProgress += 0.038; 
+        if (p.flipProgress >= 1) {
+            p.flipProgress = 0;
             p.isFlipping = false;
         }
     }
@@ -1298,18 +1273,30 @@ function gameLoop() {
     });
 
     ctx.save();
-    ctx.translate(p.x + p.w/2, p.y + p.h); 
+    
+    
+    let legSwing = p.grounded ? Math.sin(p.walkCycle) * 7.5 : (p.vy > 0 ? -4 : 6);
+    if(p.grounded && Math.abs(p.vx) > 0.5) p.walkCycle += 0.38; else legSwing = 0;
+    
+    let bounce = p.grounded ? Math.abs(Math.sin(p.walkCycle)) * 2 : 0;
+    if (p.isFlipping) bounce = 0;
+
+    
+    ctx.translate(p.x + p.w/2, p.y + p.h/2); 
     ctx.scale(p.scaleX * p.facing, p.scaleY); 
 
-    
     if (p.isFlipping) {
-        ctx.rotate(p.flipAngle);
+    
+        let flipEase = p.flipProgress < 0.5 ? 2 * p.flipProgress * p.flipProgress : 1 - Math.pow(-2 * p.flipProgress + 2, 2) / 2;
+        ctx.rotate(flipEase * Math.PI * 2);
     }
 
-    let legSwing = p.grounded ? Math.sin(p.walkCycle) * 8.5 : (p.vy > 0 ? -4 : 6);
-    if(p.grounded && Math.abs(p.vx) > 0.5) p.walkCycle += 0.38; else legSwing = 0;
-
     
+    ctx.translate(0, p.h/2);
+    
+   
+    ctx.translate(0, bounce);
+
     drawPlayerAura(ctx, selectedSkin, playerColor);
     drawPlayerSkin(ctx, p, legSwing, selectedSkin, playerColor);
 
