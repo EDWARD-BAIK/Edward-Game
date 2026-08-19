@@ -14,6 +14,7 @@
             overflow: hidden; 
             user-select: none; 
             -webkit-user-select: none; 
+            -webkit-touch-callout: none; /* Mencegah menu pop-up di mobile */
         }
 
         #loadingOverlay {
@@ -75,6 +76,7 @@
             width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
             border: 3px solid transparent; transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            -webkit-tap-highlight-color: transparent; 
         }
         .color-opt.selected { border-color: #ffffff; transform: scale(1.2); }
 
@@ -84,6 +86,7 @@
             border: none; border-radius: 14px; cursor: pointer;
             box-shadow: 0 8px 25px rgba(255, 69, 0, 0.4); margin-top: 12px;
             transition: transform 0.1s ease, box-shadow 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
         }
         #startBtn:active { transform: scale(0.97); }
 
@@ -105,6 +108,12 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 5px;
         }
         .lives-badge { color: #ff4757; font-weight: 900; }
+
+      
+        .ctrl, #jumpBtn, #openShopBtn, #closeShopBtn, .skin-btn, .btn-modal {
+            -webkit-tap-highlight-color: transparent; /* Kunci menghilangkan kotak biru */
+            outline: none;
+        }
 
         .ctrl { 
             position: absolute; bottom: 25px; width: 70px; height: 70px; 
@@ -186,10 +195,16 @@
             background: rgba(239, 68, 68, 0.95); color: white; padding: 12px 25px;
             border-radius: 20px; font-weight: 800; font-size: 14px; z-index: 3000;
             transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4); pointer-events: none;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4); pointer-events: none;
             border: 2px solid #fca5a5; text-align: center; white-space: nowrap; letter-spacing: 0.5px;
         }
         #toastMsg.show { top: 30px; }
+        
+        .toast-success {
+            background: rgba(16, 185, 129, 0.95) !important;
+            border-color: #6ee7b7 !important;
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4) !important;
+        }
     </style>
 </head>
 <body>
@@ -289,13 +304,16 @@ function playSfx(freqStart, freqEnd, type, duration, vol) {
     } catch(e){}
 }
 
-function showToast(msg) {
+
+function showToast(msg, isSuccess = false) {
     const toast = document.getElementById('toastMsg');
     toast.innerText = msg;
+    if (isSuccess) toast.classList.add('toast-success');
+    else toast.classList.remove('toast-success');
+    
     toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 2000);
+    setTimeout(() => toast.classList.remove('show'), 2500);
 }
-
 
 function formatDist(d) {
     if (d >= 1000) {
@@ -378,6 +396,7 @@ window.buySkin = function(id, price) {
         playSfx(500, 1000, 'sine', 0.2, 0.1);
         selectSkin(id);
         updateMenuCoins();
+        showToast("Skin Berhasil Dibeli!", true);
     } else {
         playSfx(150, 100, 'sawtooth', 0.2, 0.1);
         showToast("Koin tidak cukup!"); 
@@ -407,13 +426,13 @@ document.getElementById('closeShopBtn').addEventListener('click', () => {
 updateMenuCoins();
 
 
-
 let playerName = "Tanpa Nama";
 let playerColor = "#ff4500";
 let animId; 
 let lives = 3;
 let distance = 0;
 let heartAngle = 0;
+let lastMilestone = 0; 
 
 function updateLivesUI() {
     let livesEl = document.getElementById('lives');
@@ -478,7 +497,6 @@ document.getElementById('changeUserBtn').addEventListener('click', () => {
     updateMenuCoins();
 });
 
-
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 let dpr = 1;
@@ -519,7 +537,9 @@ function resetGame() {
         x: 100, y: viewportH - 300, lastY: viewportH - 300, 
         w: 24, h: 42, vx: 0, vy: 0, 
         grounded: false, scaleX: 1, scaleY: 1, 
-        walkCycle: 0, facing: 1, coyoteTimer: 0, jumpBufferTimer: 0
+        walkCycle: 0, facing: 1, coyoteTimer: 0, 
+        jumpBufferTimer: 0, 
+        jumpsLeft: 2 
     };
     
     platforms = [
@@ -557,16 +577,18 @@ function resetGame() {
     keys = { left: false, right: false, jumpPressed: false };
     distance = 0; cameraX = 0; gameRunning = true;
     currentDimension = 0; dimensionFlash = 0;
+    lastMilestone = 0;
     document.getElementById('distanceHUD').innerText = formatDist(distance);
     updateMenuCoins();
     document.getElementById('gameOverModal').classList.remove('active');
 }
 
-function createDust(x, y, count = 5) {
+function createDust(x, y, count = 5, isDoubleJump = false) {
     for(let i=0; i<count; i++) {
         particles.push({
-            type: 'dust', x: x + (Math.random()*12 - 6), y: y,
-            vx: Math.random()*3 - 1.5, vy: -Math.random()*1.5 - 0.5,
+            type: 'dust', x: x + (Math.random()*12 - 6), y: y + (isDoubleJump ? -20 : 0),
+            vx: Math.random()*3 - 1.5, 
+            vy: isDoubleJump ? (Math.random()*3) : (-Math.random()*1.5 - 0.5),
             size: Math.random()*3 + 2, alpha: 1
         });
     }
@@ -585,17 +607,27 @@ function ensureHeartsOnPlatforms() {
 
 function updateWorldElements() {
     let lastPlat = platforms[platforms.length - 1];
+    
+     
+    let diffMultiplier = Math.min(2.5, 1 + (distance / 800)); 
+    
     while (lastPlat.x < cameraX + viewportW + 300) {
-        let gap = 60 + Math.random() * 100;
+        
+        let gap = (60 + Math.random() * 120) * diffMultiplier;
         let newX = lastPlat.x + lastPlat.w + gap; 
-        let maxJumpUp = gap > 120 ? 20 : 80; 
+        
+       
+        let maxJumpUp = gap > (120 * diffMultiplier) ? 30 : (90 * diffMultiplier); 
         let yOffset = (Math.random() * (maxJumpUp + 110)) - maxJumpUp;
         let newY = Math.max(160, Math.min(viewportH - 130, lastPlat.y + yOffset));
         
+       
+        let platWidth = (70 + Math.random() * 90) / Math.min(1.5, diffMultiplier);
+        
         let isCoin = Math.random() > 0.25;
-        let isHeart = !isCoin && (lives < 3) && (Math.random() < 0.5);
+        let isHeart = !isCoin && (lives < 3) && (Math.random() < 0.4);
 
-        platforms.push({ x: newX, y: newY, w: 70 + Math.random() * 80, h: 22, coin: isCoin, heart: isHeart });
+        platforms.push({ x: newX, y: newY, w: platWidth, h: 22, coin: isCoin, heart: isHeart });
         lastPlat = platforms[platforms.length - 1];
     }
     platforms = platforms.filter(pt => pt.x + pt.w > cameraX - 200);
@@ -644,7 +676,6 @@ document.getElementById('jumpBtn').addEventListener('pointerdown', e => {
 
 let coinAngle = 0;
 
-
 function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
     const drawLegs = (c) => {
         ctx.strokeStyle = c; ctx.lineWidth = 4; ctx.lineCap = "round";
@@ -660,6 +691,7 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
     };
 
     switch(skinId) {
+     
         case 'spongebob':
             ctx.strokeStyle = "#facc15"; ctx.lineWidth = 3; ctx.lineCap = "round";
             ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0); ctx.stroke();
@@ -825,7 +857,6 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
     }
 }
 
-
 function gameLoop() {
     if (!gameRunning) return;
 
@@ -842,14 +873,35 @@ function gameLoop() {
     p.vy += 0.75; 
     p.y += p.vy;
 
-    if (p.grounded) p.coyoteTimer = 7; else p.coyoteTimer--;
-    if (keys.jumpPressed) { p.jumpBufferTimer = 7; keys.jumpPressed = false; } else p.jumpBufferTimer--;
+    if (p.grounded) {
+        p.coyoteTimer = 7;
+        p.jumpsLeft = 2; 
+    } else {
+        p.coyoteTimer--;
+    }
 
-    if (p.coyoteTimer > 0 && p.jumpBufferTimer > 0) {
-        p.vy = -14.5; p.coyoteTimer = 0; p.jumpBufferTimer = 0;
-        p.scaleY = 1.3; p.scaleX = 0.75; 
-        playSfx(180, 450, 'square', 0.12, 0.08);
-        createDust(p.x + p.w/2, p.y + p.h, 6);
+    if (keys.jumpPressed) {
+        if (p.coyoteTimer > 0 || p.jumpsLeft > 0) {
+            
+            
+            p.vy = -14.5;
+            
+            if (p.coyoteTimer <= 0) {
+                
+                p.jumpsLeft--; 
+                createDust(p.x + p.w/2, p.y + p.h, 10, true); 
+                playSfx(250, 600, 'square', 0.1, 0.08); 
+            } else {
+            
+                p.jumpsLeft--; 
+                createDust(p.x + p.w/2, p.y + p.h, 6, false);
+                playSfx(180, 450, 'square', 0.12, 0.08);
+            }
+            
+            p.coyoteTimer = 0; 
+            p.scaleY = 1.3; p.scaleX = 0.75;
+        }
+        keys.jumpPressed = false; 
     }
 
     p.scaleX += (1 - p.scaleX) * 0.15;
@@ -863,6 +915,19 @@ function gameLoop() {
     if (currentDist > distance) {
         distance = currentDist;
         document.getElementById('distanceHUD').innerText = formatDist(distance);
+        
+        
+        if (distance > 0 && distance % 500 === 0 && distance !== lastMilestone) {
+            lastMilestone = distance;
+            let bonusCoins = (distance / 500) * 100; // 500m=100, 1000m=200, dst.
+            totalCoins += bonusCoins;
+            localStorage.setItem('edward_total_coins', totalCoins);
+            document.getElementById('hudCoins').innerText = totalCoins;
+            
+            playSfx(500, 1200, 'sine', 0.4, 0.2); 
+            floatingTexts.push({ x: p.x + p.w/2, y: p.y - 60, text: `🎉 +${bonusCoins} 🪙`, alpha: 1.5 });
+            showToast(`Luar Biasa! ${distance}m Tercapai! Bonus ${bonusCoins} Koin!`, true);
+        }
     }
 
     updateWorldElements();
@@ -870,7 +935,6 @@ function gameLoop() {
     let wasGrounded = p.grounded;
     p.grounded = false;
 
-    
     let dimCheck = Math.floor(distance / 250);
     if(dimCheck > currentDimension && distance > 0) {
         currentDimension = dimCheck;
@@ -1109,7 +1173,6 @@ function gameLoop() {
 
     if (gameRunning) animId = requestAnimationFrame(gameLoop);
 }
-
 </script>
 </body>
 </html>
