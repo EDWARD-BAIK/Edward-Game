@@ -109,7 +109,7 @@
         }
         .lives-badge { color: #ff4757; font-weight: 900; }
 
-        .ctrl, #jumpBtn, #flipBtn, #openShopBtn, #closeShopBtn, .skin-btn, .btn-modal {
+        .ctrl, #jumpBtn, #dashBtn, #openShopBtn, #closeShopBtn, .skin-btn, .btn-modal {
             -webkit-tap-highlight-color: transparent;
             outline: none;
             user-select: none;
@@ -129,26 +129,27 @@
         #rightBtn { left: 100px; }
 
       
-        #flipBtn {
+        #dashBtn {
             position: absolute; 
             bottom: 35px;       
             right: 110px;       
             width: 55px;        
             height: 55px;       
             border-radius: 50%; 
-            background: rgba(14, 165, 233, 0.35); 
+            background: rgba(168, 85, 247, 0.35); 
             color: white; 
-            font-size: 10px; 
+            font-size: 11px; 
             font-weight: 900; 
             z-index: 100;
             border: 1.5px solid rgba(255, 255, 255, 0.6); 
             display: flex; align-items: center; justify-content: center; 
-            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.3);
             backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
             letter-spacing: 0.5px;
             transition: all 0.1s;
         }
-        #flipBtn:active { transform: scale(0.92); background: rgba(14, 165, 233, 0.6); }
+        #dashBtn:active { transform: scale(0.92); background: rgba(168, 85, 247, 0.6); }
+        #dashBtn.cooldown { opacity: 0.4; pointer-events: none; border-color: rgba(255,255,255,0.2); }
 
         #jumpBtn { 
             position: absolute; bottom: 25px; right: 20px; width: 80px; height: 80px; 
@@ -237,7 +238,7 @@
     <div class="loading-status" id="loadingStatus">Memuat aset...</div>
 </div>
 
-<div id="toastMsg">Koin tidak cukup!</div>
+<div id="toastMsg">Koin tidak cukup</div>
 
 <div id="loginOverlay">
     <div class="login-card">
@@ -287,7 +288,7 @@
 
 <div id="leftBtn" class="ctrl">◀</div>
 <div id="rightBtn" class="ctrl">▶</div>
-<div id="flipBtn">SALTO</div>
+<div id="dashBtn">DASH</div>
 <div id="jumpBtn">LOMPAT</div>
 
 <div id="gameOverModal">
@@ -396,20 +397,6 @@ const skinsData = [
 
 function getAuraColors(skinId, baseColor) {
     switch(skinId) {
-        case 'default': return { p: baseColor, s: '#ffaa00' };
-        case 'ninja': return { p: '#8b5cf6', s: '#3b82f6' };
-        case 'spongebob': return { p: '#facc15', s: '#feef8a' };
-        case 'patrick': return { p: '#f472b6', s: '#c084fc' };
-        case 'mario': return { p: '#ef4444', s: '#3b82f6' };
-        case 'luigi': return { p: '#22c55e', s: '#86efac' };
-        case 'pikachu': return { p: '#facc15', s: '#eab308' };
-        case 'zombie': return { p: '#4ade80', s: '#15803d' };
-        case 'astronaut': return { p: '#38bdf8', s: '#818cf8' };
-        case 'batman': return { p: '#64748b', s: '#facc15' };
-        case 'superman': return { p: '#3b82f6', s: '#ef4444' };
-        case 'spiderman': return { p: '#ef4444', s: '#2563eb' };
-        case 'ironman': return { p: '#eab308', s: '#dc2626' };
-        case 'sonic': return { p: '#2563eb', s: '#38bdf8' };
         case 'bbb_biasa': return { p: '#ff5722', s: '#ffaa00' };
         case 'bbb_petir': return { p: '#facc15', s: '#ffffff' };
         case 'bbb_angin': return { p: '#38bdf8', s: '#e0f2fe' };
@@ -426,7 +413,7 @@ function getAuraColors(skinId, baseColor) {
         case 'bbb_solar': return { p: '#facc15', s: '#ffffff' };
         case 'bbb_frostfire': return { p: '#ff4500', s: '#00ffff' };
         case 'bbb_supra': return { p: '#c084fc', s: '#ffffff' };
-        default: return { p: '#ff4500', s: '#ffaa00' };
+        default: return { p: 'transparent', s: 'transparent' };
     }
 }
 
@@ -474,7 +461,7 @@ window.buySkin = function(id, price) {
         showToast("Skin Berhasil Dibeli!", true);
     } else {
         playSfx(150, 100, 'sawtooth', 0.2, 0.1);
-        showToast("Koin tidak cukup!"); 
+        showToast("Koin tidak cukup"); 
     }
 }
 
@@ -615,7 +602,7 @@ function resetGame() {
         grounded: false, scaleX: 1, scaleY: 1, 
         walkCycle: 0, facing: 1, coyoteTimer: 0, 
         jumpsLeft: 2,
-        isFlipping: false, flipProgress: 0
+        isDashing: false, dashTimer: 0, dashCooldown: 0
     };
     
     platforms = [
@@ -650,35 +637,35 @@ function resetGame() {
     }
 
     particles = []; floatingTexts = [];
-    keys = { left: false, right: false, jumpPressed: false, flipPressed: false };
+    keys = { left: false, right: false, jumpPressed: false };
     cameraX = 0; gameRunning = true;
     currentDimension = 0; dimensionFlash = 0;
     distance = 0; lastMilestone = 0;
     document.getElementById('distanceHUD').innerText = formatDist(distance);
     document.getElementById('gameOverModal').classList.remove('active');
+    
+    document.getElementById('dashBtn').classList.remove('cooldown');
 }
 
-function triggerFlip() {
-    if (!p.isFlipping) {
-        p.isFlipping = true;
-        p.flipProgress = 0;
-        if (p.grounded || p.coyoteTimer > 0) {
-            p.vy = -15;
-            p.grounded = false;
-        } else {
-            p.vy = Math.min(p.vy, -10); 
-        }
-        playSfx(300, 800, 'sine', 0.25, 0.12);
-        createDust(p.x + p.w/2, p.y + p.h, 8, true);
+function triggerDash() {
+    if (!p.isDashing && p.dashCooldown <= 0) {
+        p.isDashing = true;
+        p.dashTimer = 14; 
+        p.dashCooldown = 65; 
+        p.vy = 0; 
+        if (p.facing === 0) p.facing = 1;
+        playSfx(600, 200, 'square', 0.25, 0.15);
+        createDust(p.x + p.w/2, p.y + p.h, 12, true);
+        document.getElementById('dashBtn').classList.add('cooldown');
     }
 }
 
-function createDust(x, y, count = 5, isDoubleJump = false) {
+function createDust(x, y, count = 5, isBurst = false) {
     for(let i=0; i<count; i++) {
         particles.push({
-            type: 'dust', x: x + (Math.random()*14 - 7), y: y + (isDoubleJump ? -20 : 0),
+            type: 'dust', x: x + (Math.random()*14 - 7), y: y + (isBurst ? -20 : 0),
             vx: Math.random()*3.5 - 1.75, 
-            vy: isDoubleJump ? (Math.random()*3) : (-Math.random()*1.8 - 0.5),
+            vy: isBurst ? (Math.random()*3) : (-Math.random()*1.8 - 0.5),
             size: Math.random()*3.5 + 2, alpha: 1
         });
     }
@@ -740,7 +727,7 @@ window.addEventListener('keydown', e => {
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
     if (e.code === 'KeyD' || e.code === 'ArrowRight') keys.right = true;
     if (e.code === 'Space' || e.code === 'KeyW' || e.code === 'ArrowUp') keys.jumpPressed = true;
-    if (e.code === 'KeyE' || e.code === 'ShiftLeft') triggerFlip();
+    if (e.code === 'KeyE' || e.code === 'ShiftLeft') triggerDash();
 });
 window.addEventListener('keyup', e => {
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = false;
@@ -759,13 +746,16 @@ setupTouch('rightBtn', 'right');
 document.getElementById('jumpBtn').addEventListener('pointerdown', e => {
     e.preventDefault(); initAudio(); keys.jumpPressed = true;
 });
-document.getElementById('flipBtn').addEventListener('pointerdown', e => {
-    e.preventDefault(); initAudio(); triggerFlip();
+document.getElementById('dashBtn').addEventListener('pointerdown', e => {
+    e.preventDefault(); initAudio(); triggerDash();
 });
 
 let coinAngle = 0;
 
 function drawPlayerAura(ctx, skinId, baseColor) {
+    
+    if (!skinId.startsWith('bbb_')) return;
+
     let aura = getAuraColors(skinId, baseColor);
     let pulse = Math.sin(Date.now() * 0.008) * 5;
 
@@ -795,159 +785,180 @@ function drawBoboiboyCap(ctx, capColor, visorColor, emblem = "B") {
 }
 
 function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
+    const isJumpingUp = !p.grounded && p.vy < 0;
+    
     const drawLegs = (c) => {
         ctx.strokeStyle = c; ctx.lineWidth = 4.5; ctx.lineCap = "round";
         ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(4, -12); ctx.lineTo(4 - legSwing, 0); ctx.stroke();
     };
+
+    
     const drawArm = (c, isBack) => {
         ctx.strokeStyle = c; ctx.lineWidth = 4; ctx.lineCap = "round";
-        if (isBack) { 
-            ctx.beginPath(); ctx.moveTo(-2, -30); ctx.lineTo(-2 - legSwing * 1.5, -16); ctx.stroke();
-        } else {      
-            ctx.beginPath(); ctx.moveTo(2, -30); ctx.lineTo(2 + legSwing * 1.5, -16); ctx.stroke();
+        ctx.beginPath();
+        
+        let startX = isBack ? -2 : 2;
+        let startY = -30;
+        ctx.moveTo(startX, startY);
+
+        let endX, endY;
+        
+        if (p.isDashing) {
+        
+            endX = startX - 12;
+            endY = -26;
+        } else if (isJumpingUp) {
+      
+            endX = startX + (isBack ? -3 : 3);
+            endY = -45;
+        } else {
+       
+            let swing = isBack ? -legSwing * 1.5 : legSwing * 1.5;
+            endX = startX + swing;
+            endY = -16;
         }
+
+        ctx.lineTo(endX, endY);
+        ctx.stroke();
     };
+
     const drawBody = (c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.roundRect(-11, -36, 22, 24, 7); ctx.fill(); };
     const drawHead = (c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(0, -42, 11, 0, Math.PI * 2); ctx.fill(); };
     const drawEye = (x, y, r, c="#000") => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill(); };
     const drawCape = (c) => {
         ctx.fillStyle = c; ctx.beginPath();
-        ctx.moveTo(-8, -36); ctx.lineTo(-20 - legSwing, -10); ctx.lineTo(-12 - legSwing, -8); ctx.fill();
+        let capeSwing = p.isDashing ? 15 : legSwing;
+        ctx.moveTo(-8, -36); ctx.lineTo(-20 - capeSwing, -10); ctx.lineTo(-12 - capeSwing, -8); ctx.fill();
     };
-
     switch(skinId) {
-       
+        
         case 'bbb_biasa':
-            drawLegs("#1e293b"); drawArm("#ff5722", true); drawBody("#ff5722"); drawArm("#ff5722", false); drawHead("#ffdbac");
+            drawLegs("#1e293b"); drawArm("#334155", true); drawBody("#ff5722"); drawArm("#334155", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#000000", "#ff5722", "B"); drawEye(4, -42, 2, "#000"); break;
         case 'bbb_petir':
-            drawLegs("#111827"); drawArm("#dc2626", true); drawBody("#dc2626"); drawArm("#dc2626", false); drawHead("#ffdbac");
+            drawLegs("#111827"); drawArm("#111827", true); drawBody("#dc2626"); drawArm("#111827", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#111827", "#facc15", "⚡"); drawEye(4, -42, 2, "#facc15"); break;
         case 'bbb_angin':
-            drawLegs("#1e293b"); drawArm("#0288d1", true); drawBody("#0288d1"); drawArm("#0288d1", false); drawHead("#ffdbac");
+            drawLegs("#1e293b"); drawArm("#334155", true); drawBody("#0288d1"); drawArm("#334155", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#0288d1", "#ffffff", "🌀"); drawEye(4, -42, 2, "#38bdf8"); break;
         case 'bbb_tanah':
-            drawLegs("#3f2e1a"); drawArm("#78350f", true); drawBody("#78350f"); drawArm("#78350f", false); drawHead("#ffdbac");
+            drawLegs("#3f2e1a"); drawArm("#1c1917", true); drawBody("#78350f"); drawArm("#1c1917", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#78350f", "#b45309", "🪨"); drawEye(4, -42, 2, "#d97706"); break;
         case 'bbb_daun':
-            drawLegs("#14532d"); drawArm("#16a34a", true); drawBody("#16a34a"); drawArm("#16a34a", false); drawHead("#ffdbac");
+            drawLegs("#14532d"); drawArm("#064e3b", true); drawBody("#16a34a"); drawArm("#064e3b", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#16a34a", "#86efac", "🍃"); drawEye(4, -42, 2, "#22c55e"); break;
         case 'bbb_api':
-            drawLegs("#450a0a"); drawArm("#ff4500", true); drawBody("#ff4500"); drawArm("#ff4500", false); drawHead("#ffdbac");
+            drawLegs("#450a0a"); drawArm("#450a0a", true); drawBody("#ff4500"); drawArm("#450a0a", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#ea580c", "#facc15", "🔥"); drawEye(4, -42, 2, "#ff2200"); break;
         case 'bbb_air':
-            drawLegs("#083344"); drawArm("#06b6d4", true); drawBody("#06b6d4"); drawArm("#06b6d4", false); drawHead("#ffdbac");
+            drawLegs("#083344"); drawArm("#0f172a", true); drawBody("#06b6d4"); drawArm("#0f172a", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#06b6d4", "#ffffff", "💧"); drawEye(4, -42, 2, "#38bdf8"); break;
         case 'bbb_cahaya':
-            drawLegs("#fef08a"); drawArm("#ffffff", true); drawBody("#ffffff"); drawArm("#ffffff", false); drawHead("#ffdbac");
+            drawLegs("#fef08a"); drawArm("#334155", true); drawBody("#ffffff"); drawArm("#334155", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#ffffff", "#facc15", "✨"); drawEye(4, -42, 2, "#eab308"); break;
         case 'bbb_halilintar':
-            drawCape("#dc2626"); drawLegs("#000000"); drawArm("#991b1b", true); drawBody("#991b1b"); drawArm("#991b1b", false); drawHead("#ffdbac");
+            drawCape("#dc2626"); drawLegs("#000000"); drawArm("#000000", true); drawBody("#991b1b"); drawArm("#000000", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#000000", "#dc2626", "⚡"); drawEye(4, -42, 2, "#ef4444"); break;
         case 'bbb_taufan':
-            drawLegs("#0c4a6e"); drawArm("#0288d1", true); drawBody("#0288d1"); drawArm("#0288d1", false); drawHead("#ffdbac");
+            drawLegs("#0c4a6e"); drawArm("#0f172a", true); drawBody("#0288d1"); drawArm("#0f172a", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#0288d1", "#00ffff", "🌪️"); drawEye(4, -42, 2, "#00ffff"); break;
         case 'bbb_gempa':
-            drawLegs("#451a03"); drawArm("#b45309", true); drawBody("#b45309"); drawArm("#b45309", false); drawHead("#ffdbac");
+            drawLegs("#451a03"); drawArm("#1c1917", true); drawBody("#b45309"); drawArm("#1c1917", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#78350f", "#f59e0b", "💎"); drawEye(4, -42, 2, "#f59e0b"); break;
         case 'bbb_blaze':
-            drawLegs("#7c2d12"); drawArm("#dc2626", true); drawBody("#dc2626"); drawArm("#dc2626", false); drawHead("#ffdbac");
+            drawLegs("#7c2d12"); drawArm("#262626", true); drawBody("#dc2626"); drawArm("#262626", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#ea580c", "#ff3d00", "💥"); drawEye(4, -42, 2, "#ffea00"); break;
         case 'bbb_ice':
-            drawLegs("#164e63"); drawArm("#0891b2", true); drawBody("#0891b2"); drawArm("#0891b2", false); drawHead("#ffdbac");
+            drawLegs("#164e63"); drawArm("#111827", true); drawBody("#0891b2"); drawArm("#111827", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#0891b2", "#a5f3fc", "❄️"); drawEye(4, -42, 2, "#a5f3fc"); break;
         case 'bbb_solar':
-            drawLegs("#1e293b"); drawArm("#ffffff", true); drawBody("#ffffff"); 
+            drawLegs("#1e293b"); drawArm("#94a3b8", true); drawBody("#ffffff"); 
             ctx.fillStyle = "#facc15"; ctx.fillRect(-11, -30, 22, 5); 
-            drawArm("#ffffff", false); drawHead("#ffdbac");
+            drawArm("#94a3b8", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#ffffff", "#facc15", "☀️");
             ctx.fillStyle = "#000"; ctx.fillRect(2, -44, 8, 4); break;
         case 'bbb_frostfire':
-            drawLegs("#1e1b4b"); drawArm("#ff4500", true); drawBody("#ff4500");
+            drawLegs("#1e1b4b"); drawArm("#0f172a", true); drawBody("#ff4500");
             ctx.fillStyle = "#06b6d4"; ctx.fillRect(0, -36, 11, 24); 
-            drawArm("#06b6d4", false); drawHead("#ffdbac");
+            drawArm("#0f172a", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#ea580c", "#06b6d4", "🔥❄️"); drawEye(4, -42, 2, "#00ffff"); break;
         case 'bbb_supra':
-            drawCape("#a855f7"); drawLegs("#0f172a"); drawArm("#38bdf8", true); drawBody("#38bdf8"); 
+            drawCape("#a855f7"); drawLegs("#0f172a"); drawArm("#1e293b", true); drawBody("#38bdf8"); 
             ctx.fillStyle = "#a855f7"; ctx.fillRect(-11, -30, 22, 6);
-            drawArm("#38bdf8", false); drawHead("#ffdbac");
+            drawArm("#1e293b", false); drawHead("#ffdbac");
             drawBoboiboyCap(ctx, "#a855f7", "#ffffff", "👑"); drawEye(4, -42, 2, "#c084fc"); break;
 
-       
+        
         case 'spongebob':
-            ctx.strokeStyle = "#facc15"; ctx.lineWidth = 3.5; ctx.lineCap = "round";
-            ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(4, -12); ctx.lineTo(4 - legSwing, 0); ctx.stroke();
-            
-            ctx.beginPath(); ctx.moveTo(-13, -25); ctx.lineTo(-13 - legSwing*1.5, -15); ctx.stroke();
-            ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(-4 + legSwing, 0, 3, 0, Math.PI*2); ctx.arc(4 - legSwing, 0, 3, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = "#facc15"; ctx.fillRect(-13, -40, 26, 22); 
-            ctx.fillStyle = "#fff"; ctx.fillRect(-13, -18, 26, 6); 
-            ctx.fillStyle = "#8b4513"; ctx.fillRect(-13, -12, 26, 6); 
+            drawLegs("#facc15"); 
+            drawArm("#facc15", true); 
+            ctx.fillStyle = "#facc15"; ctx.fillRect(-11, -40, 22, 22); 
+            ctx.fillStyle = "#fff"; ctx.fillRect(-11, -18, 22, 6); 
+            ctx.fillStyle = "#8b4513"; ctx.fillRect(-11, -12, 22, 6); 
             ctx.fillStyle = "#ef4444"; ctx.fillRect(-2, -18, 4, 8); 
-            ctx.beginPath(); ctx.moveTo(13, -25); ctx.lineTo(13 + legSwing*1.5, -15); ctx.stroke(); 
-            drawEye(2, -30, 4, "#fff"); drawEye(11, -30, 4, "#fff");
-            drawEye(3, -30, 1.5, "#3b82f6"); drawEye(12, -30, 1.5, "#3b82f6");
+            drawArm("#facc15", false);
+            drawEye(0, -30, 4, "#fff"); drawEye(8, -30, 4, "#fff");
+            drawEye(1, -30, 1.5, "#3b82f6"); drawEye(9, -30, 1.5, "#3b82f6");
             break;
         case 'patrick':
-            ctx.strokeStyle = "#84cc16"; ctx.lineWidth = 4.5; ctx.lineCap = "round";
-            ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(4, -12); ctx.lineTo(4 - legSwing, 0); ctx.stroke();
-            
-            ctx.strokeStyle = "#f472b6"; ctx.beginPath(); ctx.moveTo(-10, -25); ctx.lineTo(-10 - legSwing, -15); ctx.stroke();
+            drawLegs("#84cc16"); drawArm("#f472b6", true);
             ctx.fillStyle = "#84cc16"; ctx.fillRect(-11, -18, 22, 8); 
             ctx.fillStyle = "#a855f7"; ctx.fillRect(-6, -16, 4, 4); ctx.fillRect(4, -14, 4, 4); 
             ctx.fillStyle = "#f472b6"; ctx.beginPath(); ctx.moveTo(-11, -18); ctx.lineTo(11, -18); ctx.lineTo(0, -44); ctx.fill(); 
-            ctx.beginPath(); ctx.moveTo(10, -25); ctx.lineTo(10 + legSwing, -15); ctx.stroke(); 
-            drawEye(2, -30, 3, "#fff"); drawEye(9, -30, 3, "#fff");
-            drawEye(3, -30, 1, "#000"); drawEye(10, -30, 1, "#000");
+            drawArm("#f472b6", false);
+            drawEye(2, -30, 3, "#fff"); drawEye(8, -30, 3, "#fff");
+            drawEye(3, -30, 1, "#000"); drawEye(9, -30, 1, "#000");
             break;
         case 'ninja':
-            drawLegs("#1e293b"); drawArm("#1e293b", true); drawBody("#1e293b"); drawArm("#1e293b", false); drawHead("#1e293b");
+            drawLegs("#1e293b"); drawArm("#0f172a", true); drawBody("#1e293b"); drawArm("#0f172a", false); drawHead("#1e293b");
             ctx.fillStyle = "#ffdbac"; ctx.fillRect(0, -47, 8, 6);
             ctx.fillStyle = "#ef4444"; ctx.fillRect(-11, -49, 22, 3); drawEye(4, -44, 1.5, "#000"); break;
         case 'mario':
-            drawLegs("#3b82f6"); drawArm("#ef4444", true); drawBody("#ef4444"); 
-            ctx.fillStyle = "#3b82f6"; ctx.fillRect(-9, -28, 18, 14); 
+            drawLegs("#3b82f6"); drawArm("#ef4444", true); drawBody("#3b82f6"); // Overalls biru, baju merah
             drawArm("#ef4444", false); drawHead("#ffdbac");
             ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(0, -44, 11, 0, Math.PI, true); ctx.fill(); drawEye(4, -44, 1.5); break;
         case 'luigi':
-            drawLegs("#3b82f6"); drawArm("#22c55e", true); drawBody("#22c55e"); 
-            ctx.fillStyle = "#3b82f6"; ctx.fillRect(-9, -28, 18, 14); 
+            drawLegs("#3b82f6"); drawArm("#22c55e", true); drawBody("#3b82f6"); // Overalls biru, baju hijau
             drawArm("#22c55e", false); drawHead("#ffdbac");
             ctx.fillStyle = "#22c55e"; ctx.beginPath(); ctx.arc(0, -44, 11, 0, Math.PI, true); ctx.fill(); drawEye(4, -44, 1.5); break;
         case 'pikachu':
             drawLegs("#facc15"); drawBody("#facc15"); drawHead("#facc15");
             ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.moveTo(-4, -50); ctx.lineTo(-13, -63); ctx.lineTo(0, -50); ctx.fill();
             ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.moveTo(4, -50); ctx.lineTo(13, -63); ctx.lineTo(0, -50); ctx.fill();
+            drawArm("#eab308", false); 
             drawEye(4, -44, 2); ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(0, -40, 2.5, 0, Math.PI*2); ctx.fill(); break;
         case 'zombie':
-            drawLegs("#4b5563"); drawArm("#6366f1", true); drawBody("#6366f1"); drawArm("#6366f1", false); drawHead("#4ade80");
+            drawLegs("#4b5563"); drawArm("#4f46e5", true); drawBody("#6366f1"); drawArm("#4f46e5", false); drawHead("#4ade80");
             drawEye(2, -44, 2, "#fff"); drawEye(2, -44, 0.5, "#ef4444"); break;
         case 'astronaut':
-            drawLegs("#f8fafc"); drawArm("#f8fafc", true); drawBody("#f8fafc"); drawArm("#f8fafc", false); drawHead("#f8fafc");
+            drawLegs("#e2e8f0"); drawArm("#cbd5e1", true); drawBody("#f8fafc"); drawArm("#cbd5e1", false); drawHead("#f8fafc");
             ctx.fillStyle = "#38bdf8"; ctx.beginPath(); ctx.roundRect(0, -48, 13, 11, 4); ctx.fill(); break;
         case 'batman':
-            drawCape("#111827"); drawLegs("#111827"); drawArm("#64748b", true); drawBody("#64748b"); drawArm("#64748b", false); drawHead("#111827");
+            drawCape("#111827"); drawLegs("#111827"); drawArm("#475569", true); drawBody("#64748b"); drawArm("#475569", false); drawHead("#111827");
             ctx.fillStyle = "#ffdbac"; ctx.fillRect(-3, -40, 8, 4); drawEye(3, -44, 1.5, "#fff"); break;
         case 'superman':
-            drawCape("#ef4444"); drawLegs("#3b82f6"); drawArm("#3b82f6", true); drawBody("#3b82f6"); drawArm("#3b82f6", false); drawHead("#ffdbac"); drawEye(4, -44, 1.5); break;
+            drawCape("#ef4444"); drawLegs("#1d4ed8"); drawArm("#1d4ed8", true); drawBody("#3b82f6"); drawArm("#1d4ed8", false); drawHead("#ffdbac"); drawEye(4, -44, 1.5); break;
         case 'spiderman':
-            drawLegs("#3b82f6"); drawArm("#ef4444", true); drawBody("#ef4444"); drawArm("#ef4444", false); drawHead("#ef4444");
+            drawLegs("#1d4ed8"); drawArm("#ef4444", true); drawBody("#1d4ed8"); 
+            ctx.fillStyle = "#ef4444"; ctx.fillRect(-5, -36, 10, 24); 
+            drawArm("#ef4444", false); drawHead("#ef4444");
             ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(5, -44, 4.5, 6.5, Math.PI/8, 0, Math.PI*2); ctx.fill(); break;
         case 'ironman':
-            drawLegs("#ef4444"); drawArm("#ef4444", true); drawBody("#ef4444"); drawArm("#ef4444", false); drawHead("#ef4444");
+            drawLegs("#b91c1c"); drawArm("#b91c1c", true); drawBody("#ef4444"); drawArm("#b91c1c", false); drawHead("#ef4444");
             ctx.fillStyle = "#facc15"; ctx.fillRect(-7, -48, 14, 13); drawEye(4, -44, 1.5, "#38bdf8"); break;
         case 'sonic':
-            drawLegs("#ef4444"); drawArm("#3b82f6", true); drawBody("#3b82f6"); drawArm("#3b82f6", false); drawHead("#3b82f6");
+            drawLegs("#ef4444"); drawArm("#1d4ed8", true); drawBody("#3b82f6"); drawArm("#1d4ed8", false); drawHead("#3b82f6");
             drawEye(5, -44, 2, "#fff"); break;
         case 'default':
         default:
             ctx.fillStyle = "#e11d48"; ctx.beginPath(); ctx.moveTo(-2, -32);
             ctx.quadraticCurveTo(-15 - p.vx * 2.5, -26 + Math.sin(Date.now()*0.01)*3, -19 - p.vx * 3.5, -13);
             ctx.quadraticCurveTo(-9, -22, -2, -28); ctx.fill();
-            drawLegs("#0f172a"); drawArm(baseColor, true); drawBody(baseColor); drawArm(baseColor, false); 
+            drawLegs("#0f172a"); 
+            drawArm("#334155", true);
+            drawBody(baseColor); 
+            drawArm("#334155", false); 
             drawHead("#ffdbac"); drawEye(3, -43, 2.5, "#0f172a"); break;
     }
 }
@@ -955,17 +966,35 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
 function gameLoop() {
     if (!gameRunning) return;
 
+    if (p.dashCooldown > 0) p.dashCooldown--;
+    if (p.dashCooldown <= 0) document.getElementById('dashBtn').classList.remove('cooldown');
+
     const accel = p.grounded ? 0.65 : 0.38; 
     const friction = p.grounded ? 0.82 : 0.91; 
 
-    if (keys.left) { p.vx -= accel; p.facing = -1; } 
-    else if (keys.right) { p.vx += accel; p.facing = 1; } 
-    else { p.vx *= friction; }
+   
+    if (p.isDashing) {
+        p.vx = p.facing * 12; 
+        p.vy = 0; 
+        p.dashTimer--;
+        
+        if (p.dashTimer % 3 === 0) createDust(p.x + (p.facing === 1 ? 0 : p.w), p.y + p.h - 10, 2);
+        
+        if (p.dashTimer <= 0) {
+            p.isDashing = false;
+            p.vx = p.facing * 5; 
+        }
+    } else {
+        
+        if (keys.left) { p.vx -= accel; p.facing = -1; } 
+        else if (keys.right) { p.vx += accel; p.facing = 1; } 
+        else { p.vx *= friction; }
+        
+        p.vx = Math.max(-6.5, Math.min(6.5, p.vx));
+        p.vy += 0.78; 
+    }
     
-    p.vx = Math.max(-6.5, Math.min(6.5, p.vx));
     p.x += p.vx; p.lastY = p.y; 
-
-    p.vy += 0.78; 
     p.y += p.vy;
 
     if (p.grounded) {
@@ -978,6 +1007,7 @@ function gameLoop() {
     if (keys.jumpPressed) {
         if (p.coyoteTimer > 0 || p.jumpsLeft > 0) {
             p.vy = -15;
+            p.isDashing = false; 
             
             if (p.coyoteTimer <= 0) {
                 p.jumpsLeft--; 
@@ -993,15 +1023,6 @@ function gameLoop() {
             p.scaleY = 1.35; p.scaleX = 0.72;
         }
         keys.jumpPressed = false; 
-    }
-
-    
-    if (p.isFlipping) {
-        p.flipProgress += 0.038; 
-        if (p.flipProgress >= 1) {
-            p.flipProgress = 0;
-            p.isFlipping = false;
-        }
     }
 
     p.scaleX += (1 - p.scaleX) * 0.18;
@@ -1098,7 +1119,7 @@ function gameLoop() {
             
             p.x = safePlat.x + safePlat.w / 2 - p.w / 2;
             p.y = safePlat.y - p.h - 30;
-            p.vx = 0; p.vy = 0; p.grounded = false;
+            p.vx = 0; p.vy = 0; p.grounded = false; p.isDashing = false;
 
             ensureHeartsOnPlatforms();
         } else {
@@ -1123,7 +1144,7 @@ function gameLoop() {
 
     ctx.clearRect(0, 0, viewportW, viewportH);
 
-    
+      
     let nowTime = new Date();
     let h = nowTime.getHours();
     let m = nowTime.getMinutes();
@@ -1274,28 +1295,15 @@ function gameLoop() {
 
     ctx.save();
     
-    
     let legSwing = p.grounded ? Math.sin(p.walkCycle) * 7.5 : (p.vy > 0 ? -4 : 6);
     if(p.grounded && Math.abs(p.vx) > 0.5) p.walkCycle += 0.38; else legSwing = 0;
     
     let bounce = p.grounded ? Math.abs(Math.sin(p.walkCycle)) * 2 : 0;
-    if (p.isFlipping) bounce = 0;
+    if (p.isDashing) bounce = 0;
 
-    
     ctx.translate(p.x + p.w/2, p.y + p.h/2); 
     ctx.scale(p.scaleX * p.facing, p.scaleY); 
-
-    if (p.isFlipping) {
-    
-        let flipEase = p.flipProgress < 0.5 ? 2 * p.flipProgress * p.flipProgress : 1 - Math.pow(-2 * p.flipProgress + 2, 2) / 2;
-        ctx.rotate(flipEase * Math.PI * 2);
-    }
-
-    
-    ctx.translate(0, p.h/2);
-    
-   
-    ctx.translate(0, bounce);
+    ctx.translate(0, p.h/2 + bounce);
 
     drawPlayerAura(ctx, selectedSkin, playerColor);
     drawPlayerSkin(ctx, p, legSwing, selectedSkin, playerColor);
