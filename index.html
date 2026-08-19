@@ -88,23 +88,22 @@
         #startBtn:active { transform: scale(0.97); }
 
         .high-score-tag {
-            margin-top: 18px; font-size: 13px; color: #ffd700; font-weight: 700;
-            background: rgba(255, 215, 0, 0.1); padding: 8px 14px; border-radius: 20px;
-            display: inline-block; border: 1px solid rgba(255, 215, 0, 0.2);
+            margin-top: 18px; font-size: 13px; color: #38bdf8; font-weight: 700;
+            background: rgba(56, 189, 248, 0.1); padding: 8px 14px; border-radius: 20px;
+            display: inline-block; border: 1px solid rgba(56, 189, 248, 0.2);
         }
 
         #gameUI {
             position: absolute; top: 18px; left: 18px; right: 18px;
-            display: flex; justify-content: space-between; align-items: center;
+            display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center;
             z-index: 50; pointer-events: none;
         }
         .hud-badge {
             background: rgba(15, 23, 42, 0.85); 
-            padding: 10px 18px; border-radius: 20px; color: white;
-            border: 1px solid rgba(255,255,255,0.15); font-weight: 700; font-size: 14px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            padding: 10px 14px; border-radius: 20px; color: white;
+            border: 1px solid rgba(255,255,255,0.15); font-weight: 700; font-size: 13px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 5px;
         }
-        .score-badge { color: #ffd700; font-weight: 900; }
         .lives-badge { color: #ff4757; font-weight: 900; }
 
         .ctrl { 
@@ -180,6 +179,17 @@
         .btn-buy { background: #ffaa00; color: #000; box-shadow: 0 4px 10px rgba(255, 170, 0, 0.4);}
         .btn-select { background: #38bdf8; color: #000; }
         .btn-selected { background: #ff4500; color: white; box-shadow: 0 4px 10px rgba(255, 69, 0, 0.4);}
+
+    
+        #toastMsg {
+            position: fixed; top: -60px; left: 50%; transform: translateX(-50%);
+            background: rgba(239, 68, 68, 0.95); color: white; padding: 12px 25px;
+            border-radius: 20px; font-weight: 800; font-size: 14px; z-index: 3000;
+            transition: top 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4); pointer-events: none;
+            border: 2px solid #fca5a5; text-align: center; white-space: nowrap; letter-spacing: 0.5px;
+        }
+        #toastMsg.show { top: 30px; }
     </style>
 </head>
 <body>
@@ -191,6 +201,8 @@
     </div>
     <div class="loading-status" id="loadingStatus">Memuat aset...</div>
 </div>
+
+<div id="toastMsg">Koin tidak cukup!</div>
 
 <div id="loginOverlay">
     <div class="login-card">
@@ -213,16 +225,16 @@
             </div>
         </div>
 
-        <div id="menuCoinsDisplay">TOTAL KOIN: 0 🪙</div>
+        <div id="menuCoinsDisplay" style="margin-bottom:10px; font-weight:800; color:#ffd700;">TOTAL KOIN: 0 🪙</div>
         
-        <button id="openShopBtn">TOKO SKIN</button>
+        <button id="openShopBtn" style="width: 100%; padding: 12px; border-radius: 12px; background: #38bdf8; color: #000; font-weight: 800; border: none; cursor: pointer; margin-bottom: 5px;">TOKO SKIN</button>
         <button id="startBtn">MAINKAN SEKARANG</button>
         
-        <div class="high-score-tag">🏆 Rekor: <span id="loginHighScore">0</span></div>
+        <div class="high-score-tag">🏆 Rekor Jarak: <span id="loginHighScore">0m</span></div>
     </div>
 </div>
 
-<!-- TOKO SKIN MODAL -->
+
 <div id="shopModal">
     <div class="shop-header">
         <h2>TOKO SKIN</h2>
@@ -235,7 +247,8 @@
 <div id="gameUI">
     <div class="hud-badge">👤 <span id="displayPlayerName">Player</span></div>
     <div class="hud-badge lives-badge">❤️ <span id="lives">3</span></div>
-    <div class="hud-badge score-badge">🪙 <span id="score">0</span></div>
+    <div class="hud-badge" style="color: #ffd700;">🪙 <span id="hudCoins">0</span></div>
+    <div class="hud-badge" style="color: #38bdf8;">🏃 <span id="distanceHUD">0m</span></div>
 </div>
 
 <div id="leftBtn" class="ctrl">◀</div>
@@ -244,8 +257,8 @@
 
 <div id="gameOverModal">
     <h2>KAMU KALAH</h2>
-    <p style="margin: 5px 0; color:#cbd5e1;">Skor Kamu: <b id="finalScore" style="color:#ffd700; font-size:18px;">0</b></p>
-    <p style="margin: 0; font-size:13px; color:#94a3b8;">Rekor Terbaik: <span id="bestScore">0</span></p>
+    <p style="margin: 5px 0; color:#cbd5e1;">Jarak Tempuh: <b id="finalScore" style="color:#38bdf8; font-size:20px;">0m</b></p>
+    <p style="margin: 0; font-size:13px; color:#94a3b8;">Rekor Terbaik: <span id="bestScore">0m</span></p>
     <div class="btn-group">
         <button id="respawnBtn" class="btn-modal">MAIN LAGI</button>
         <button id="changeUserBtn" class="btn-modal">MENU</button>
@@ -276,12 +289,32 @@ function playSfx(freqStart, freqEnd, type, duration, vol) {
     } catch(e){}
 }
 
+function showToast(msg) {
+    const toast = document.getElementById('toastMsg');
+    toast.innerText = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+
+function formatDist(d) {
+    if (d >= 1000) {
+        let km = (d / 1000).toFixed(1);
+        return (km.endsWith('.0') ? km.slice(0, -2) : km) + "km";
+    }
+    return d + "m";
+}
+
+
 let totalCoins = parseInt(localStorage.getItem('edward_total_coins')) || 0;
 let ownedSkins = JSON.parse(localStorage.getItem('edward_owned_skins')) || ['default'];
 let selectedSkin = localStorage.getItem('edward_selected_skin') || 'default';
+let highDistance = parseInt(localStorage.getItem('edward_high_dist')) || 0;
+
+document.getElementById('loginHighScore').innerText = formatDist(highDistance);
 
 const skinsData = [
-    { id: 'default', name: 'Default', price: 0 },
+    { id: 'default', name: 'default', price: 0 },
     { id: 'ninja', name: 'Ninja', price: 100 },
     { id: 'spongebob', name: 'Spongebob', price: 150 },
     { id: 'patrick', name: 'Patrick', price: 150 },
@@ -306,6 +339,7 @@ const skinsData = [
 function updateMenuCoins() {
     document.getElementById('menuCoinsDisplay').innerText = `TOTAL KOIN: ${totalCoins} 🪙`;
     document.getElementById('shopTotalCoins').innerText = `${totalCoins} 🪙`;
+    document.getElementById('hudCoins').innerText = totalCoins;
 }
 
 function renderShop() {
@@ -346,7 +380,7 @@ window.buySkin = function(id, price) {
         updateMenuCoins();
     } else {
         playSfx(150, 100, 'sawtooth', 0.2, 0.1);
-        alert("Koin tidak cukup! Kumpulkan di dalam game.");
+        showToast("Koin tidak cukup!"); 
     }
 }
 
@@ -376,11 +410,10 @@ updateMenuCoins();
 
 let playerName = "Tanpa Nama";
 let playerColor = "#ff4500";
-let highScore = localStorage.getItem('edward_highscore') || 0;
 let animId; 
 let lives = 3;
+let distance = 0;
 let heartAngle = 0;
-document.getElementById('loginHighScore').innerText = highScore;
 
 function updateLivesUI() {
     let livesEl = document.getElementById('lives');
@@ -465,8 +498,7 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-
-let p, platforms, particles, floatingTexts, keys, score, cameraX, gameRunning;
+let p, platforms, particles, floatingTexts, keys, cameraX, gameRunning;
 let bgElements = [];
 let stars = [];
 let clouds = [];
@@ -523,9 +555,10 @@ function resetGame() {
 
     particles = []; floatingTexts = [];
     keys = { left: false, right: false, jumpPressed: false };
-    score = 0; cameraX = 0; gameRunning = true;
+    distance = 0; cameraX = 0; gameRunning = true;
     currentDimension = 0; dimensionFlash = 0;
-    document.getElementById('score').innerText = '0';
+    document.getElementById('distanceHUD').innerText = formatDist(distance);
+    updateMenuCoins();
     document.getElementById('gameOverModal').classList.remove('active');
 }
 
@@ -613,7 +646,6 @@ let coinAngle = 0;
 
 
 function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
-    
     const drawLegs = (c) => {
         ctx.strokeStyle = c; ctx.lineWidth = 4; ctx.lineCap = "round";
         ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0); ctx.stroke();
@@ -652,16 +684,16 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
             break;
         case 'ultraman':
             drawLegs("#e2e8f0"); drawBody("#e2e8f0");
-            ctx.fillStyle = "#ef4444"; ctx.fillRect(-4, -34, 8, 22); 
-            drawEye(4, -24, 3, "#06b6d4"); 
+            ctx.fillStyle = "#ef4444"; ctx.fillRect(-4, -34, 8, 22);
+            drawEye(4, -24, 3, "#06b6d4");
             drawHead("#e2e8f0");
             ctx.fillStyle = "#ef4444"; ctx.fillRect(-2, -52, 4, 6);
-            ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.ellipse(5, -42, 3, 5, Math.PI/6, 0, Math.PI*2); ctx.fill(); 
+            ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.ellipse(5, -42, 3, 5, Math.PI/6, 0, Math.PI*2); ctx.fill();
             break;
         case 'ninja':
             drawLegs("#1e293b"); drawBody("#1e293b"); drawHead("#1e293b");
-            ctx.fillStyle = "#ffdbac"; ctx.fillRect(0, -45, 8, 6); 
-            ctx.fillStyle = "#ef4444"; ctx.fillRect(-10, -47, 20, 3); 
+            ctx.fillStyle = "#ffdbac"; ctx.fillRect(0, -45, 8, 6);
+            ctx.fillStyle = "#ef4444"; ctx.fillRect(-10, -47, 20, 3);
             drawEye(4, -42, 1.5, "#000");
             break;
         case 'mario':
@@ -670,7 +702,7 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
             ctx.fillStyle = "#facc15"; ctx.fillRect(-5, -24, 3, 3); ctx.fillRect(3, -24, 3, 3); 
             drawHead("#ffdbac");
             ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(0, -42, 10, 0, Math.PI, true); ctx.fill(); ctx.fillRect(0, -42, 12, 3);
-            ctx.fillStyle = "#000"; ctx.fillRect(2, -38, 8, 2); 
+            ctx.fillStyle = "#000"; ctx.fillRect(2, -38, 8, 2);
             drawEye(4, -42, 1.5);
             break;
         case 'luigi':
@@ -695,7 +727,7 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
             drawLegs("#4b5563"); drawBody("#6366f1"); drawHead("#4ade80");
             ctx.fillStyle = "#4b5563"; ctx.fillRect(-10, -20, 20, 8); 
             drawEye(2, -42, 2, "#fff"); drawEye(2, -42, 0.5, "#ef4444");
-            ctx.fillStyle = "#111827"; ctx.fillRect(6, -44, 4, 4); 
+            ctx.fillStyle = "#111827"; ctx.fillRect(6, -44, 4, 4);
             break;
         case 'astronaut':
             drawLegs("#f8fafc"); drawBody("#f8fafc"); drawHead("#f8fafc");
@@ -706,9 +738,9 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
             drawCape("#111827"); drawLegs("#111827"); drawBody("#64748b"); drawHead("#111827");
             ctx.fillStyle = "#111827"; ctx.fillRect(-10, -34, 20, 8); 
             ctx.fillStyle = "#facc15"; ctx.fillRect(-4, -28, 8, 3); 
-            ctx.fillStyle = "#ffdbac"; ctx.fillRect(-3, -38, 8, 4);  
+            ctx.fillStyle = "#ffdbac"; ctx.fillRect(-3, -38, 8, 4); 
             drawEye(3, -42, 1.5, "#fff");
-            ctx.fillStyle = "#111827"; ctx.beginPath(); ctx.moveTo(-6, -48); ctx.lineTo(-8, -55); ctx.lineTo(0, -48); ctx.fill(); 
+            ctx.fillStyle = "#111827"; ctx.beginPath(); ctx.moveTo(-6, -48); ctx.lineTo(-8, -55); ctx.lineTo(0, -48); ctx.fill();
             ctx.beginPath(); ctx.moveTo(6, -48); ctx.lineTo(8, -55); ctx.lineTo(0, -48); ctx.fill();
             break;
         case 'superman':
@@ -717,7 +749,7 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
             ctx.fillStyle = "#facc15"; ctx.fillRect(-10, -22, 20, 2); 
             drawHead("#ffdbac");
             ctx.fillStyle = "#111827"; ctx.beginPath(); ctx.arc(0, -42, 10.5, Math.PI, Math.PI*2); ctx.fill(); 
-            ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.moveTo(0, -32); ctx.lineTo(-4, -26); ctx.lineTo(4, -26); ctx.fill(); 
+            ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.moveTo(0, -32); ctx.lineTo(-4, -26); ctx.lineTo(4, -26); ctx.fill();
             drawEye(4, -42, 1.5);
             break;
         case 'spiderman':
@@ -731,14 +763,14 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
             drawLegs("#ef4444"); drawBody("#ef4444"); drawHead("#ef4444");
             ctx.fillStyle = "#facc15"; ctx.fillRect(-6, -46, 12, 12); 
             drawEye(4, -42, 1.5, "#38bdf8");
-            drawEye(0, -24, 3, "#22d3ee"); 
+            drawEye(0, -24, 3, "#22d3ee");
             break;
         case 'sonic':
             drawLegs("#ef4444"); drawBody("#3b82f6"); 
             ctx.fillStyle = "#ffdbac"; ctx.beginPath(); ctx.arc(2, -24, 6, 0, Math.PI*2); ctx.fill(); 
             drawHead("#3b82f6");
-            ctx.fillStyle = "#ffdbac"; ctx.beginPath(); ctx.arc(4, -38, 5, 0, Math.PI*2); ctx.fill(); 
-            ctx.fillStyle = "#3b82f6"; 
+            ctx.fillStyle = "#ffdbac"; ctx.beginPath(); ctx.arc(4, -38, 5, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#3b82f6";
             ctx.beginPath(); ctx.moveTo(-8, -48); ctx.lineTo(-18, -40); ctx.lineTo(-10, -36); ctx.fill();
             ctx.beginPath(); ctx.moveTo(-10, -36); ctx.lineTo(-20, -30); ctx.lineTo(-10, -26); ctx.fill();
             drawEye(5, -42, 2, "#fff"); drawEye(6, -42, 1, "#000");
@@ -747,7 +779,7 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
             drawLegs("#f97316"); drawBody("#f97316");
             ctx.fillStyle = "#1d4ed8"; ctx.fillRect(-10, -24, 20, 4); ctx.fillRect(-6, -34, 12, 8); 
             drawHead("#ffdbac");
-            ctx.fillStyle = "#111827"; 
+            ctx.fillStyle = "#111827";
             ctx.beginPath(); ctx.moveTo(-10, -40); ctx.lineTo(-15, -55); ctx.lineTo(0, -48);
             ctx.lineTo(10, -60); ctx.lineTo(10, -48); ctx.lineTo(18, -50); ctx.lineTo(10, -40); ctx.fill();
             drawEye(5, -40, 1.5);
@@ -756,7 +788,7 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
             drawLegs("#f97316"); drawBody("#f97316");
             ctx.fillStyle = "#111827"; ctx.fillRect(0, -34, 10, 22); 
             drawHead("#ffdbac");
-            ctx.fillStyle = "#facc15"; 
+            ctx.fillStyle = "#facc15";
             ctx.beginPath(); ctx.moveTo(-10, -40); ctx.lineTo(-12, -50); ctx.lineTo(-5, -48);
             ctx.lineTo(0, -55); ctx.lineTo(5, -48); ctx.lineTo(12, -50); ctx.lineTo(10, -40); ctx.fill();
             ctx.fillStyle = "#1d4ed8"; ctx.fillRect(-10, -46, 20, 4); 
@@ -767,7 +799,7 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
             ctx.fillStyle = "#3b82f6"; ctx.fillRect(-10, -20, 20, 8); 
             drawHead("#ffdbac");
             ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.ellipse(-4, -40, 12, 18, 0, 0, Math.PI*2); ctx.fill();
-            ctx.fillStyle = "#ef4444"; ctx.fillRect(-10, -48, 20, 3); 
+            ctx.fillStyle = "#ef4444"; ctx.fillRect(-10, -48, 20, 3);
             drawEye(5, -41, 1.5);
             break;
         case 'cyborg':
@@ -784,10 +816,9 @@ function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
             break;
         case 'default':
         default:
-            
             ctx.fillStyle = "#e11d48"; ctx.beginPath(); ctx.moveTo(-2, -30);
             ctx.quadraticCurveTo(-14 - p.vx * 2.5, -24 + Math.sin(Date.now()*0.01)*3, -18 - p.vx * 3.5, -12);
-            ctx.quadraticCurveTo(-8, -20, -2, -26); ctx.fill(); 
+            ctx.quadraticCurveTo(-8, -20, -2, -26); ctx.fill();
             drawLegs("#0f172a");
             drawBody(baseColor); drawHead("#ffdbac"); drawEye(3, -41, 2.5, "#0f172a");
             break;
@@ -827,13 +858,21 @@ function gameLoop() {
     let targetCamX = p.x - viewportW * 0.35;
     cameraX += (targetCamX - cameraX) * 0.08;
 
+    
+    let currentDist = Math.max(0, Math.floor((p.x - 100) / 10));
+    if (currentDist > distance) {
+        distance = currentDist;
+        document.getElementById('distanceHUD').innerText = formatDist(distance);
+    }
+
     updateWorldElements();
 
     let wasGrounded = p.grounded;
     p.grounded = false;
 
-    let dimCheck = Math.floor(score / 50);
-    if(dimCheck > currentDimension && score > 0) {
+    
+    let dimCheck = Math.floor(distance / 250);
+    if(dimCheck > currentDimension && distance > 0) {
         currentDimension = dimCheck;
         dimensionFlash = 1;
         playSfx(800, 150, 'sawtooth', 0.6, 0.3);
@@ -858,13 +897,11 @@ function gameLoop() {
             let dx = (p.x + p.w/2) - cx, dy = (p.y + p.h/2) - cy;
             if (Math.sqrt(dx*dx + dy*dy) < 26) {
                 pt.coin = false; 
-                score += 10;
-                totalCoins += 10; 
+                totalCoins += 10;
                 localStorage.setItem('edward_total_coins', totalCoins);
-                
-                document.getElementById('score').innerText = score;
+                document.getElementById('hudCoins').innerText = totalCoins;
                 playSfx(750, 1100, 'sine', 0.18, 0.12);
-                floatingTexts.push({ x: cx, y: cy, text: "+10", alpha: 1 });
+                floatingTexts.push({ x: cx, y: cy, text: "+10 🪙", alpha: 1 });
             }
         }
 
@@ -907,12 +944,15 @@ function gameLoop() {
             updateLivesUI();
             gameRunning = false; 
             playSfx(220, 50, 'sawtooth', 0.35, 0.15);
-            if (score > highScore) {
-                highScore = score; localStorage.setItem('edward_highscore', highScore);
-                document.getElementById('loginHighScore').innerText = highScore;
+            
+            if (distance > highDistance) {
+                highDistance = distance; 
+                localStorage.setItem('edward_high_dist', highDistance);
+                document.getElementById('loginHighScore').innerText = formatDist(highDistance);
             }
-            document.getElementById('finalScore').innerText = score;
-            document.getElementById('bestScore').innerText = highScore;
+            
+            document.getElementById('finalScore').innerText = formatDist(distance);
+            document.getElementById('bestScore').innerText = formatDist(highDistance);
             document.getElementById('gameOverModal').classList.add('active');
             updateMenuCoins();
             return;
@@ -958,152 +998,118 @@ function gameLoop() {
         ctx.fillStyle = isNight ? "#2d98da" : "#eb4d4b";
         ctx.beginPath(); ctx.arc(viewportW - 100, 100, 45, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = isNight ? "rgba(0, 210, 211, 0.6)" : "rgba(240, 147, 43, 0.6)";
-        ctx.lineWidth = 8;
-        ctx.beginPath(); ctx.ellipse(viewportW - 100, 100, 70, 15, 20 * Math.PI/180, 0, Math.PI*2); ctx.stroke();
+        ctx.lineWidth = 15;
+        ctx.beginPath(); ctx.ellipse(viewportW - 100, 100, 70, 20, Math.PI/8, 0, Math.PI*2); ctx.stroke();
     }
 
-    
-    ctx.save();
-    ctx.translate(-cameraX * 0.1, 0); 
+    ctx.fillStyle = isNight ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.7)";
     clouds.forEach(c => {
-        if (curTheme.type === 'earth') {
-            ctx.fillStyle = isNight ? "#94a3b8" : "#ffffff"; 
-            ctx.beginPath(); ctx.arc(c.x, c.y, 30*c.scale, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(c.x + 25*c.scale, c.y - 10*c.scale, 35*c.scale, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(c.x + 50*c.scale, c.y, 30*c.scale, 0, Math.PI*2); ctx.fill();
-        } else if (curTheme.type === 'cyber') {
-            ctx.fillStyle = "rgba(0, 255, 255, 0.15)";
-            ctx.fillRect(c.x, c.y, 80*c.scale, 15*c.scale);
-            ctx.fillRect(c.x + 20*c.scale, c.y - 15*c.scale, 50*c.scale, 15*c.scale);
-        } else if (curTheme.type === 'alien') {
-            ctx.fillStyle = "rgba(162, 155, 254, 0.3)";
-            ctx.beginPath(); ctx.ellipse(c.x, c.y, 50*c.scale, 10*c.scale, 0, 0, Math.PI*2); ctx.fill();
-            ctx.strokeStyle = "rgba(253, 121, 168, 0.5)"; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.ellipse(c.x, c.y, 60*c.scale, 15*c.scale, 0, 0, Math.PI*2); ctx.stroke();
-        }
+        let drawX = c.x - cameraX * 0.1; 
+        ctx.beginPath();
+        ctx.arc(drawX, c.y, 25*c.scale, Math.PI, Math.PI*2);
+        ctx.arc(drawX + 15*c.scale, c.y - 10*c.scale, 20*c.scale, Math.PI, Math.PI*2);
+        ctx.arc(drawX + 35*c.scale, c.y, 25*c.scale, Math.PI, Math.PI*2);
+        ctx.fill();
     });
-    ctx.restore();
 
-
-    ctx.save();
-    ctx.translate(-cameraX * 0.3, 0);
+    ctx.fillStyle = isNight ? "rgba(0,0,0,0.4)" : "rgba(255,255,255,0.07)";
     bgElements.forEach(bg => {
-        let ty = viewportH; 
-        
-        if (curTheme.type === 'earth') {
-            let trunkH = 140 * bg.scale, trunkW = 18 * bg.scale;
-            ctx.fillStyle = isNight ? "#5c3a21" : "#8B4513";
-            ctx.fillRect(bg.x - trunkW/2, ty - trunkH, trunkW, trunkH + 20); 
-            
-            ctx.fillStyle = isNight ? "#15803d" : "#2ecc71"; 
-            ctx.beginPath(); ctx.arc(bg.x, ty - trunkH, 55*bg.scale, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(bg.x - 30*bg.scale, ty - trunkH + 15*bg.scale, 40*bg.scale, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(bg.x + 30*bg.scale, ty - trunkH + 15*bg.scale, 40*bg.scale, 0, Math.PI*2); ctx.fill();
-        } 
-        else if (curTheme.type === 'cyber') {
-            let bw = 60 * bg.scale, bh = 250 * bg.scale;
-            ctx.fillStyle = "#0d0221"; ctx.fillRect(bg.x - bw/2, ty - bh, bw, bh + 20);
-            ctx.strokeStyle = "#ff007f"; ctx.lineWidth = 2; ctx.strokeRect(bg.x - bw/2, ty - bh, bw, bh + 20);
-            ctx.fillStyle = "#00ffff"; 
-            for(let wy = ty - bh + 20*bg.scale; wy < ty - 20; wy += 30*bg.scale) {
-                 if((bg.seed + Math.floor(wy)) % 5 !== 0) ctx.fillRect(bg.x - bw/2 + 10*bg.scale, wy, 15*bg.scale, 15*bg.scale);
-                 if((bg.seed * Math.floor(wy)) % 5 !== 0) ctx.fillRect(bg.x + bw/2 - 25*bg.scale, wy, 15*bg.scale, 15*bg.scale);
-            }
-        } 
-        else if (curTheme.type === 'alien') {
-            let stemH = 140 * bg.scale, stemW = 15 * bg.scale;
-            ctx.fillStyle = "#b2bec3"; ctx.beginPath();
-            ctx.moveTo(bg.x - stemW, ty); ctx.quadraticCurveTo(bg.x - stemW/2, ty - stemH/2, bg.x - stemW, ty - stemH);
-            ctx.lineTo(bg.x + stemW, ty - stemH); ctx.quadraticCurveTo(bg.x + stemW/2, ty - stemH/2, bg.x + stemW, ty); ctx.fill();
-            ctx.fillStyle = "#a29bfe"; ctx.beginPath(); ctx.arc(bg.x, ty - stemH, 70*bg.scale, Math.PI, 0); ctx.fill();
-            ctx.fillStyle = "#fd79a8"; 
-            ctx.beginPath(); ctx.arc(bg.x - 30*bg.scale, ty - stemH - 25*bg.scale, 10*bg.scale, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(bg.x + 30*bg.scale, ty - stemH - 35*bg.scale, 15*bg.scale, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(bg.x, ty - stemH - 50*bg.scale, 12*bg.scale, 0, Math.PI*2); ctx.fill();
-        }
+        let drawX = bg.x - cameraX * 0.3;
+        ctx.beginPath(); ctx.moveTo(drawX, viewportH - 70);
+        ctx.lineTo(drawX + 150*bg.scale, viewportH - 70 - 250*bg.scale - (bg.seed%50));
+        ctx.lineTo(drawX + 300*bg.scale, viewportH - 70); ctx.fill();
     });
-    ctx.restore();
 
     ctx.save();
     ctx.translate(-cameraX, 0);
 
     platforms.forEach(pt => {
-        ctx.fillStyle = "rgba(0,0,0,0.25)"; ctx.fillRect(pt.x + 4, pt.y + 6, pt.w, pt.h);
-        ctx.fillStyle = curTheme.plat; ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, pt.h, 6); ctx.fill();
-        ctx.fillStyle = curTheme.top; ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, 4, [6, 6, 0, 0]); ctx.fill();
+        ctx.fillStyle = curTheme.plat;
+        ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, pt.h + 500, 8); ctx.fill(); 
+
+        ctx.fillStyle = curTheme.top;
+        ctx.beginPath(); ctx.roundRect(pt.x, pt.y, pt.w, pt.h, 8); ctx.fill();
         
+        ctx.fillStyle = "rgba(0,0,0,0.15)";
+        ctx.beginPath(); ctx.roundRect(pt.x, pt.y + pt.h, pt.w, 8, 0); ctx.fill();
+
         if (pt.coin) {
-            coinAngle += 0.04; let scaleC = Math.cos(coinAngle);
-            ctx.save(); ctx.translate(pt.x + pt.w/2, pt.y - 22); ctx.scale(scaleC, 1);
-            ctx.fillStyle = "#ffd700"; ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = "#ffa500"; ctx.lineWidth = 2; ctx.stroke(); ctx.restore();
+            coinAngle += 0.05;
+            let cy = pt.y - 24 + Math.sin(coinAngle + pt.x)*4;
+            let cx = pt.x + pt.w/2;
+            ctx.fillStyle = "#ffd700"; ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.arc(cx, cy, 9, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#b45309"; ctx.font = "900 13px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText("E", cx, cy);
         }
 
         if (pt.heart) {
-            heartAngle += 0.04;
-            let floatY = Math.sin(heartAngle * 2) * 3;
-            ctx.save();
-            ctx.translate(pt.x + pt.w / 2, pt.y - 22 + floatY);
-            ctx.font = "16px system-ui, sans-serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText("❤️", 0, 0);
-            ctx.restore();
+            heartAngle += 0.08;
+            let hy = pt.y - 24 + Math.sin(heartAngle + pt.x) * 4;
+            let hx = pt.x + pt.w / 2;
+            ctx.save(); ctx.translate(hx, hy); 
+            ctx.scale(1 + Math.sin(heartAngle*1.5)*0.1, 1 + Math.sin(heartAngle*1.5)*0.1);
+            ctx.fillStyle = "#ff4757";
+            ctx.beginPath();
+            ctx.moveTo(0, -3);
+            ctx.bezierCurveTo(0, -9, 8, -9, 8, -3);
+            ctx.bezierCurveTo(8, 2, 0, 8, 0, 10);
+            ctx.bezierCurveTo(0, 8, -8, 2, -8, -3);
+            ctx.bezierCurveTo(-8, -9, 0, -9, 0, -3);
+            ctx.fill(); ctx.restore();
         }
-    });
-
-    particles.forEach((pt, idx) => {
-        if(pt.type === 'dust') {
-            ctx.fillStyle = `rgba(255, 255, 255, ${pt.alpha})`;
-            ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI*2); ctx.fill();
-            pt.x += pt.vx; pt.y += pt.vy; pt.alpha -= 0.035;
-        }
-        if (pt.alpha <= 0) particles.splice(idx, 1);
-    });
-
-    floatingTexts.forEach((ft, idx) => {
-        ctx.fillStyle = `rgba(255, 215, 0, ${ft.alpha})`; ctx.font = "bold 16px system-ui";
-        ctx.fillText(ft.text, ft.x - 15, ft.y); ft.y -= 1.2; ft.alpha -= 0.02;
-        if (ft.alpha <= 0) floatingTexts.splice(idx, 1);
     });
 
     ctx.save();
-    ctx.translate(p.x + p.w/2, p.y + p.h);
-    if (p.grounded) {
-        ctx.fillStyle = "rgba(0,0,0,0.3)";
-        ctx.beginPath(); ctx.ellipse(0, -1, 12 * p.scaleX, 4, 0, 0, Math.PI * 2); ctx.fill();
-    }
-    
-    
-    ctx.rotate(p.vx * 0.035); ctx.scale(p.scaleX * p.facing, p.scaleY);
-    if (Math.abs(p.vx) > 0.2 && p.grounded) p.walkCycle += 0.25;
-    let legSwing = Math.sin(p.walkCycle) * 8;
+    ctx.translate(p.x + p.w/2, p.y + p.h); 
+    ctx.scale(p.scaleX * p.facing, p.scaleY); 
 
-    
+    let legSwing = p.grounded ? Math.sin(p.walkCycle) * 8 : (p.vy > 0 ? -4 : 6);
+    if(p.grounded && Math.abs(p.vx) > 0.5) p.walkCycle += 0.35; else legSwing = 0;
+
     drawPlayerSkin(ctx, p, legSwing, selectedSkin, playerColor);
-  
-    
-    ctx.restore(); 
+
+    ctx.restore();
+
+    particles.forEach((pt, i) => {
+        pt.x += pt.vx; pt.y += pt.vy; pt.alpha -= 0.025; pt.size *= 0.95;
+        ctx.fillStyle = `rgba(255,255,255,${pt.alpha})`;
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI*2); ctx.fill();
+        if(pt.alpha <= 0) particles.splice(i, 1);
+    });
+
+    floatingTexts.forEach((ft, i) => {
+        ft.y -= 1.2; ft.alpha -= 0.015;
+        ctx.fillStyle = `rgba(255, 215, 0, ${ft.alpha})`;
+        if (ft.text.includes("❤️")) ctx.fillStyle = `rgba(255, 71, 87, ${ft.alpha})`;
+        if (ft.text.includes("DIMENSI")) ctx.fillStyle = `rgba(56, 189, 248, ${ft.alpha})`;
+        ctx.font = "900 16px system-ui"; ctx.textAlign = "center";
+        ctx.shadowColor = "rgba(0,0,0,0.5)"; ctx.shadowBlur = 4;
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.shadowBlur = 0;
+        if(ft.alpha <= 0) floatingTexts.splice(i, 1);
+    });
+
     ctx.restore(); 
 
-    let timeLava = Date.now() * 0.003;
     ctx.fillStyle = curTheme.lava;
-    ctx.beginPath(); ctx.moveTo(0, viewportH);
-    for (let x = 0; x <= viewportW + 50; x += 25) { 
-        let y = viewportH - 30 + Math.sin(x * 0.03 + timeLava) * 6;
-        ctx.lineTo(x, y);
-    }
-    ctx.lineTo(viewportW + 50, viewportH);
-    ctx.fill();
+    ctx.fillRect(0, viewportH - 60, viewportW, 60);
+    ctx.fillStyle = isNight ? "rgba(255, 255, 255, 0.15)" : "rgba(255, 255, 255, 0.25)";
+    ctx.beginPath();
+    for(let i=0; i<=viewportW; i+=20) ctx.lineTo(i, viewportH - 60 + Math.sin(i*0.04 + Date.now()*0.003)*12);
+    ctx.lineTo(viewportW, viewportH); ctx.lineTo(0, viewportH); ctx.fill();
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.fillRect(0, viewportH - 30, viewportW, 30);
 
     if (dimensionFlash > 0) {
         ctx.fillStyle = `rgba(255, 255, 255, ${dimensionFlash})`;
         ctx.fillRect(0, 0, viewportW, viewportH);
-        dimensionFlash -= 0.03; 
+        dimensionFlash -= 0.03;
     }
 
-    animId = requestAnimationFrame(gameLoop);
+    if (gameRunning) animId = requestAnimationFrame(gameLoop);
 }
+
 </script>
 </body>
 </html>
