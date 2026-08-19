@@ -147,6 +147,39 @@
         }
         #respawnBtn { background: #ff4500; color: white; box-shadow: 0 4px 15px rgba(255,69,0,0.4); }
         #changeUserBtn { background: rgba(255,255,255,0.15); color: white; }
+
+        
+        #shopModal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.98); z-index: 1500;
+            display: none; flex-direction: column; padding: 25px 20px;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .shop-header { display: flex; justify-content: space-between; align-items: center; color: white; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;}
+        .shop-header h2 { margin: 0; color: #38bdf8; font-weight: 900; letter-spacing: 1px; }
+        #shopTotalCoins { color: #ffd700; font-weight: 900; font-size: 18px; background: rgba(255,215,0,0.1); padding: 5px 12px; border-radius: 12px;}
+        #closeShopBtn { background: none; border: none; color: white; font-size: 28px; cursor: pointer; font-weight: bold; line-height: 1;}
+        .shop-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 15px; overflow-y: auto; padding-bottom: 40px; 
+        }
+        .skin-card {
+            background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 15px 10px; text-align: center; color: white;
+            transition: transform 0.2s, border-color 0.2s; display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .skin-card.owned { border-color: #38bdf8; }
+        .skin-card.selected { border-color: #ff4500; background: rgba(255, 69, 0, 0.1); transform: scale(1.05); box-shadow: 0 5px 15px rgba(255,69,0,0.3);}
+        .skin-name { font-weight: 800; margin-bottom: 5px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;}
+        .skin-price { color: #ffd700; font-size: 12px; margin-bottom: 12px; font-weight: 600;}
+        .skin-btn {
+            width: 100%; padding: 8px; border-radius: 8px; border: none;
+            font-weight: 800; cursor: pointer; font-size: 11px; transition: transform 0.1s;
+        }
+        .skin-btn:active { transform: scale(0.95); }
+        .btn-buy { background: #ffaa00; color: #000; box-shadow: 0 4px 10px rgba(255, 170, 0, 0.4);}
+        .btn-select { background: #38bdf8; color: #000; }
+        .btn-selected { background: #ff4500; color: white; box-shadow: 0 4px 10px rgba(255, 69, 0, 0.4);}
     </style>
 </head>
 <body>
@@ -170,7 +203,7 @@
         </div>
 
         <div class="input-group">
-            <label>WARNA KARAKTER</label>
+            <label>WARNA KARAKTER (Default Skin)</label>
             <div class="color-picker" id="colorPicker">
                 <div class="color-opt selected" data-color="#ff4500" style="background:#ff4500;"></div>
                 <div class="color-opt" data-color="#00d2d3" style="background:#00d2d3;"></div>
@@ -180,9 +213,23 @@
             </div>
         </div>
 
+        <div id="menuCoinsDisplay">TOTAL KOIN: 0 🪙</div>
+        
+        <button id="openShopBtn">TOKO SKIN</button>
         <button id="startBtn">MAINKAN SEKARANG</button>
+        
         <div class="high-score-tag">🏆 Rekor: <span id="loginHighScore">0</span></div>
     </div>
+</div>
+
+<!-- TOKO SKIN MODAL -->
+<div id="shopModal">
+    <div class="shop-header">
+        <h2>TOKO SKIN</h2>
+        <div id="shopTotalCoins">0 🪙</div>
+        <button id="closeShopBtn">✖</button>
+    </div>
+    <div class="shop-grid" id="shopGrid"></div>
 </div>
 
 <div id="gameUI">
@@ -229,7 +276,105 @@ function playSfx(freqStart, freqEnd, type, duration, vol) {
     } catch(e){}
 }
 
-let playerName = "Edward";
+let totalCoins = parseInt(localStorage.getItem('edward_total_coins')) || 0;
+let ownedSkins = JSON.parse(localStorage.getItem('edward_owned_skins')) || ['default'];
+let selectedSkin = localStorage.getItem('edward_selected_skin') || 'default';
+
+const skinsData = [
+    { id: 'default', name: 'Default', price: 0 },
+    { id: 'ninja', name: 'Ninja', price: 100 },
+    { id: 'spongebob', name: 'Spongebob', price: 150 },
+    { id: 'patrick', name: 'Patrick', price: 150 },
+    { id: 'mario', name: 'Mario', price: 200 },
+    { id: 'luigi', name: 'Luigi', price: 200 },
+    { id: 'pikachu', name: 'Pikachu', price: 250 },
+    { id: 'zombie', name: 'Zombie', price: 250 },
+    { id: 'astronaut', name: 'Astronaut', price: 300 },
+    { id: 'batman', name: 'Batman', price: 350 },
+    { id: 'superman', name: 'Superman', price: 350 },
+    { id: 'spiderman', name: 'Spider-Man', price: 400 },
+    { id: 'ironman', name: 'Iron Man', price: 450 },
+    { id: 'sonic', name: 'Sonic', price: 500 },
+    { id: 'goku', name: 'Goku', price: 550 },
+    { id: 'naruto', name: 'Naruto', price: 550 },
+    { id: 'luffy', name: 'Luffy', price: 600 },
+    { id: 'cyborg', name: 'Cyborg', price: 650 },
+    { id: 'king', name: 'King', price: 800 },
+    { id: 'ultraman', name: 'Ultraman', price: 1000 }
+];
+
+function updateMenuCoins() {
+    document.getElementById('menuCoinsDisplay').innerText = `TOTAL KOIN: ${totalCoins} 🪙`;
+    document.getElementById('shopTotalCoins').innerText = `${totalCoins} 🪙`;
+}
+
+function renderShop() {
+    const grid = document.getElementById('shopGrid');
+    grid.innerHTML = '';
+    skinsData.forEach(skin => {
+        const isOwned = ownedSkins.includes(skin.id);
+        const isSelected = selectedSkin === skin.id;
+        
+        let btnHTML = '';
+        if (isSelected) {
+            btnHTML = `<button class="skin-btn btn-selected" disabled>DIPAKAI</button>`;
+        } else if (isOwned) {
+            btnHTML = `<button class="skin-btn btn-select" onclick="selectSkin('${skin.id}')">PAKAI</button>`;
+        } else {
+            btnHTML = `<button class="skin-btn btn-buy" onclick="buySkin('${skin.id}', ${skin.price})">BELI ${skin.price} 🪙</button>`;
+        }
+
+        grid.innerHTML += `
+            <div class="skin-card ${isOwned ? 'owned' : ''} ${isSelected ? 'selected' : ''}">
+                <div class="skin-name">${skin.name}</div>
+                ${!isOwned ? `<div class="skin-price">${skin.price} 🪙</div>` : `<div class="skin-price" style="color:#38bdf8;">Dimiliki</div>`}
+                ${btnHTML}
+            </div>
+        `;
+    });
+}
+
+window.buySkin = function(id, price) {
+    initAudio();
+    if (totalCoins >= price) {
+        totalCoins -= price;
+        ownedSkins.push(id);
+        localStorage.setItem('edward_total_coins', totalCoins);
+        localStorage.setItem('edward_owned_skins', JSON.stringify(ownedSkins));
+        playSfx(500, 1000, 'sine', 0.2, 0.1);
+        selectSkin(id);
+        updateMenuCoins();
+    } else {
+        playSfx(150, 100, 'sawtooth', 0.2, 0.1);
+        alert("Koin tidak cukup! Kumpulkan di dalam game.");
+    }
+}
+
+window.selectSkin = function(id) {
+    initAudio();
+    selectedSkin = id;
+    localStorage.setItem('edward_selected_skin', selectedSkin);
+    playSfx(400, 600, 'square', 0.1, 0.05);
+    renderShop();
+}
+
+document.getElementById('openShopBtn').addEventListener('click', () => {
+    initAudio();
+    document.getElementById('shopModal').style.display = 'flex';
+    setTimeout(() => document.getElementById('shopModal').style.opacity = '1', 10);
+    renderShop();
+});
+document.getElementById('closeShopBtn').addEventListener('click', () => {
+    initAudio();
+    document.getElementById('shopModal').style.opacity = '0';
+    setTimeout(() => document.getElementById('shopModal').style.display = 'none', 300);
+});
+
+updateMenuCoins();
+
+
+
+let playerName = "Tanpa Nama";
 let playerColor = "#ff4500";
 let highScore = localStorage.getItem('edward_highscore') || 0;
 let animId; 
@@ -297,6 +442,7 @@ document.getElementById('changeUserBtn').addEventListener('click', () => {
     let overlay = document.getElementById('loginOverlay');
     overlay.style.display = 'flex';
     setTimeout(() => overlay.style.opacity = '1', 10);
+    updateMenuCoins();
 });
 
 
@@ -440,7 +586,6 @@ function updateWorldElements() {
     });
 }
 
-
 window.addEventListener('keydown', e => {
     initAudio();
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') keys.left = true;
@@ -465,6 +610,189 @@ document.getElementById('jumpBtn').addEventListener('pointerdown', e => {
 });
 
 let coinAngle = 0;
+
+
+function drawPlayerSkin(ctx, p, legSwing, skinId, baseColor) {
+    
+    const drawLegs = (c) => {
+        ctx.strokeStyle = c; ctx.lineWidth = 4; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(4, -12); ctx.lineTo(4 - legSwing, 0); ctx.stroke();
+    };
+    const drawBody = (c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.roundRect(-10, -34, 20, 22, 6); ctx.fill(); };
+    const drawHead = (c) => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(0, -40, 10, 0, Math.PI * 2); ctx.fill(); };
+    const drawEye = (x, y, r, c="#000") => { ctx.fillStyle = c; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill(); };
+    const drawCape = (c) => {
+        ctx.fillStyle = c; ctx.beginPath();
+        ctx.moveTo(-8, -34); ctx.lineTo(-18 - legSwing, -10); ctx.lineTo(-10 - legSwing, -8); ctx.fill();
+    };
+
+    switch(skinId) {
+        case 'spongebob':
+            ctx.strokeStyle = "#facc15"; ctx.lineWidth = 3; ctx.lineCap = "round";
+            ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(4, -12); ctx.lineTo(4 - legSwing, 0); ctx.stroke();
+            ctx.fillStyle = "#000"; ctx.beginPath(); ctx.arc(-4 + legSwing, 0, 3, 0, Math.PI*2); ctx.arc(4 - legSwing, 0, 3, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#facc15"; ctx.fillRect(-12, -38, 24, 20); 
+            ctx.fillStyle = "#fff"; ctx.fillRect(-12, -18, 24, 6); 
+            ctx.fillStyle = "#8b4513"; ctx.fillRect(-12, -12, 24, 6); 
+            ctx.fillStyle = "#ef4444"; ctx.fillRect(-2, -18, 4, 8); 
+            drawEye(2, -30, 4, "#fff"); drawEye(10, -30, 4, "#fff");
+            drawEye(3, -30, 1.5, "#3b82f6"); drawEye(11, -30, 1.5, "#3b82f6");
+            break;
+        case 'patrick':
+            ctx.strokeStyle = "#84cc16"; ctx.lineWidth = 4; ctx.lineCap = "round";
+            ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(4, -12); ctx.lineTo(4 - legSwing, 0); ctx.stroke();
+            ctx.fillStyle = "#84cc16"; ctx.fillRect(-10, -18, 20, 8); 
+            ctx.fillStyle = "#a855f7"; ctx.fillRect(-6, -16, 4, 4); ctx.fillRect(4, -14, 4, 4); 
+            ctx.fillStyle = "#f472b6"; ctx.beginPath(); ctx.moveTo(-10, -18); ctx.lineTo(10, -18); ctx.lineTo(0, -42); ctx.fill(); 
+            drawEye(2, -30, 3, "#fff"); drawEye(8, -30, 3, "#fff");
+            drawEye(3, -30, 1, "#000"); drawEye(9, -30, 1, "#000");
+            break;
+        case 'ultraman':
+            drawLegs("#e2e8f0"); drawBody("#e2e8f0");
+            ctx.fillStyle = "#ef4444"; ctx.fillRect(-4, -34, 8, 22); 
+            drawEye(4, -24, 3, "#06b6d4"); 
+            drawHead("#e2e8f0");
+            ctx.fillStyle = "#ef4444"; ctx.fillRect(-2, -52, 4, 6);
+            ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.ellipse(5, -42, 3, 5, Math.PI/6, 0, Math.PI*2); ctx.fill(); 
+            break;
+        case 'ninja':
+            drawLegs("#1e293b"); drawBody("#1e293b"); drawHead("#1e293b");
+            ctx.fillStyle = "#ffdbac"; ctx.fillRect(0, -45, 8, 6); 
+            ctx.fillStyle = "#ef4444"; ctx.fillRect(-10, -47, 20, 3); 
+            drawEye(4, -42, 1.5, "#000");
+            break;
+        case 'mario':
+            drawLegs("#3b82f6"); drawBody("#ef4444"); 
+            ctx.fillStyle = "#3b82f6"; ctx.fillRect(-8, -26, 16, 14); 
+            ctx.fillStyle = "#facc15"; ctx.fillRect(-5, -24, 3, 3); ctx.fillRect(3, -24, 3, 3); 
+            drawHead("#ffdbac");
+            ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(0, -42, 10, 0, Math.PI, true); ctx.fill(); ctx.fillRect(0, -42, 12, 3);
+            ctx.fillStyle = "#000"; ctx.fillRect(2, -38, 8, 2); 
+            drawEye(4, -42, 1.5);
+            break;
+        case 'luigi':
+            drawLegs("#3b82f6"); drawBody("#22c55e"); 
+            ctx.fillStyle = "#3b82f6"; ctx.fillRect(-8, -26, 16, 14); 
+            ctx.fillStyle = "#facc15"; ctx.fillRect(-5, -24, 3, 3); ctx.fillRect(3, -24, 3, 3); 
+            drawHead("#ffdbac");
+            ctx.fillStyle = "#22c55e"; ctx.beginPath(); ctx.arc(0, -42, 10, 0, Math.PI, true); ctx.fill(); ctx.fillRect(0, -42, 12, 3); 
+            ctx.fillStyle = "#000"; ctx.fillRect(2, -38, 8, 2);
+            drawEye(4, -42, 1.5);
+            break;
+        case 'pikachu':
+            drawLegs("#facc15"); drawBody("#facc15"); drawHead("#facc15");
+            ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.moveTo(-4, -48); ctx.lineTo(-12, -60); ctx.lineTo(0, -48); ctx.fill();
+            ctx.fillStyle = "#000"; ctx.beginPath(); ctx.moveTo(-9, -56); ctx.lineTo(-12, -60); ctx.lineTo(-6, -52); ctx.fill();
+            ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.moveTo(4, -48); ctx.lineTo(12, -60); ctx.lineTo(0, -48); ctx.fill();
+            ctx.fillStyle = "#000"; ctx.beginPath(); ctx.moveTo(9, -56); ctx.lineTo(12, -60); ctx.lineTo(6, -52); ctx.fill();
+            ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.moveTo(-10, -20); ctx.lineTo(-18, -15); ctx.lineTo(-15, -25); ctx.lineTo(-24, -20); ctx.fill();
+            drawEye(4, -42, 2); ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.arc(0, -38, 2.5, 0, Math.PI*2); ctx.fill();
+            break;
+        case 'zombie':
+            drawLegs("#4b5563"); drawBody("#6366f1"); drawHead("#4ade80");
+            ctx.fillStyle = "#4b5563"; ctx.fillRect(-10, -20, 20, 8); 
+            drawEye(2, -42, 2, "#fff"); drawEye(2, -42, 0.5, "#ef4444");
+            ctx.fillStyle = "#111827"; ctx.fillRect(6, -44, 4, 4); 
+            break;
+        case 'astronaut':
+            drawLegs("#f8fafc"); drawBody("#f8fafc"); drawHead("#f8fafc");
+            ctx.fillStyle = "#e2e8f0"; ctx.fillRect(-6, -30, 12, 12); 
+            ctx.fillStyle = "#38bdf8"; ctx.beginPath(); ctx.roundRect(0, -46, 12, 10, 4); ctx.fill(); 
+            break;
+        case 'batman':
+            drawCape("#111827"); drawLegs("#111827"); drawBody("#64748b"); drawHead("#111827");
+            ctx.fillStyle = "#111827"; ctx.fillRect(-10, -34, 20, 8); 
+            ctx.fillStyle = "#facc15"; ctx.fillRect(-4, -28, 8, 3); 
+            ctx.fillStyle = "#ffdbac"; ctx.fillRect(-3, -38, 8, 4);  
+            drawEye(3, -42, 1.5, "#fff");
+            ctx.fillStyle = "#111827"; ctx.beginPath(); ctx.moveTo(-6, -48); ctx.lineTo(-8, -55); ctx.lineTo(0, -48); ctx.fill(); 
+            ctx.beginPath(); ctx.moveTo(6, -48); ctx.lineTo(8, -55); ctx.lineTo(0, -48); ctx.fill();
+            break;
+        case 'superman':
+            drawCape("#ef4444"); drawLegs("#3b82f6"); drawBody("#3b82f6"); 
+            ctx.fillStyle = "#ef4444"; ctx.fillRect(-10, -20, 20, 8); 
+            ctx.fillStyle = "#facc15"; ctx.fillRect(-10, -22, 20, 2); 
+            drawHead("#ffdbac");
+            ctx.fillStyle = "#111827"; ctx.beginPath(); ctx.arc(0, -42, 10.5, Math.PI, Math.PI*2); ctx.fill(); 
+            ctx.fillStyle = "#ef4444"; ctx.beginPath(); ctx.moveTo(0, -32); ctx.lineTo(-4, -26); ctx.lineTo(4, -26); ctx.fill(); 
+            drawEye(4, -42, 1.5);
+            break;
+        case 'spiderman':
+            drawLegs("#3b82f6"); drawBody("#3b82f6");
+            ctx.fillStyle = "#ef4444"; ctx.fillRect(-5, -34, 10, 22); 
+            drawHead("#ef4444");
+            ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.ellipse(5, -42, 4, 6, Math.PI/8, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = "#000"; ctx.lineWidth = 1; ctx.stroke();
+            break;
+        case 'ironman':
+            drawLegs("#ef4444"); drawBody("#ef4444"); drawHead("#ef4444");
+            ctx.fillStyle = "#facc15"; ctx.fillRect(-6, -46, 12, 12); 
+            drawEye(4, -42, 1.5, "#38bdf8");
+            drawEye(0, -24, 3, "#22d3ee"); 
+            break;
+        case 'sonic':
+            drawLegs("#ef4444"); drawBody("#3b82f6"); 
+            ctx.fillStyle = "#ffdbac"; ctx.beginPath(); ctx.arc(2, -24, 6, 0, Math.PI*2); ctx.fill(); 
+            drawHead("#3b82f6");
+            ctx.fillStyle = "#ffdbac"; ctx.beginPath(); ctx.arc(4, -38, 5, 0, Math.PI*2); ctx.fill(); 
+            ctx.fillStyle = "#3b82f6"; 
+            ctx.beginPath(); ctx.moveTo(-8, -48); ctx.lineTo(-18, -40); ctx.lineTo(-10, -36); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(-10, -36); ctx.lineTo(-20, -30); ctx.lineTo(-10, -26); ctx.fill();
+            drawEye(5, -42, 2, "#fff"); drawEye(6, -42, 1, "#000");
+            break;
+        case 'goku':
+            drawLegs("#f97316"); drawBody("#f97316");
+            ctx.fillStyle = "#1d4ed8"; ctx.fillRect(-10, -24, 20, 4); ctx.fillRect(-6, -34, 12, 8); 
+            drawHead("#ffdbac");
+            ctx.fillStyle = "#111827"; 
+            ctx.beginPath(); ctx.moveTo(-10, -40); ctx.lineTo(-15, -55); ctx.lineTo(0, -48);
+            ctx.lineTo(10, -60); ctx.lineTo(10, -48); ctx.lineTo(18, -50); ctx.lineTo(10, -40); ctx.fill();
+            drawEye(5, -40, 1.5);
+            break;
+        case 'naruto':
+            drawLegs("#f97316"); drawBody("#f97316");
+            ctx.fillStyle = "#111827"; ctx.fillRect(0, -34, 10, 22); 
+            drawHead("#ffdbac");
+            ctx.fillStyle = "#facc15"; 
+            ctx.beginPath(); ctx.moveTo(-10, -40); ctx.lineTo(-12, -50); ctx.lineTo(-5, -48);
+            ctx.lineTo(0, -55); ctx.lineTo(5, -48); ctx.lineTo(12, -50); ctx.lineTo(10, -40); ctx.fill();
+            ctx.fillStyle = "#1d4ed8"; ctx.fillRect(-10, -46, 20, 4); 
+            drawEye(5, -40, 1.5);
+            break;
+        case 'luffy':
+            drawLegs("#ffdbac"); drawBody("#ef4444"); 
+            ctx.fillStyle = "#3b82f6"; ctx.fillRect(-10, -20, 20, 8); 
+            drawHead("#ffdbac");
+            ctx.fillStyle = "#facc15"; ctx.beginPath(); ctx.ellipse(-4, -40, 12, 18, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = "#ef4444"; ctx.fillRect(-10, -48, 20, 3); 
+            drawEye(5, -41, 1.5);
+            break;
+        case 'cyborg':
+            drawLegs("#94a3b8"); drawBody("#cbd5e1"); drawHead("#94a3b8");
+            ctx.fillStyle = "#475569"; ctx.fillRect(-8, -32, 16, 16); 
+            drawEye(4, -42, 2, "#ef4444");
+            break;
+        case 'king':
+            drawCape("#ef4444"); drawLegs("#facc15"); drawBody("#facc15"); drawHead("#ffdbac");
+            ctx.fillStyle = "#eab308"; 
+            ctx.beginPath(); ctx.moveTo(-10, -46); ctx.lineTo(-12, -56); ctx.lineTo(-4, -50);
+            ctx.lineTo(0, -58); ctx.lineTo(4, -50); ctx.lineTo(12, -56); ctx.lineTo(10, -46); ctx.fill();
+            drawEye(4, -41, 1.5);
+            break;
+        case 'default':
+        default:
+            
+            ctx.fillStyle = "#e11d48"; ctx.beginPath(); ctx.moveTo(-2, -30);
+            ctx.quadraticCurveTo(-14 - p.vx * 2.5, -24 + Math.sin(Date.now()*0.01)*3, -18 - p.vx * 3.5, -12);
+            ctx.quadraticCurveTo(-8, -20, -2, -26); ctx.fill(); 
+            drawLegs("#0f172a");
+            drawBody(baseColor); drawHead("#ffdbac"); drawEye(3, -41, 2.5, "#0f172a");
+            break;
+    }
+}
 
 
 function gameLoop() {
@@ -529,7 +857,11 @@ function gameLoop() {
             let cx = pt.x + pt.w / 2, cy = pt.y - 24;
             let dx = (p.x + p.w/2) - cx, dy = (p.y + p.h/2) - cy;
             if (Math.sqrt(dx*dx + dy*dy) < 26) {
-                pt.coin = false; score += 10;
+                pt.coin = false; 
+                score += 10;
+                totalCoins += 10; 
+                localStorage.setItem('edward_total_coins', totalCoins);
+                
                 document.getElementById('score').innerText = score;
                 playSfx(750, 1100, 'sine', 0.18, 0.12);
                 floatingTexts.push({ x: cx, y: cy, text: "+10", alpha: 1 });
@@ -582,6 +914,7 @@ function gameLoop() {
             document.getElementById('finalScore').innerText = score;
             document.getElementById('bestScore').innerText = highScore;
             document.getElementById('gameOverModal').classList.add('active');
+            updateMenuCoins();
             return;
         }
     }
@@ -740,21 +1073,16 @@ function gameLoop() {
         ctx.fillStyle = "rgba(0,0,0,0.3)";
         ctx.beginPath(); ctx.ellipse(0, -1, 12 * p.scaleX, 4, 0, 0, Math.PI * 2); ctx.fill();
     }
+    
+    
     ctx.rotate(p.vx * 0.035); ctx.scale(p.scaleX * p.facing, p.scaleY);
     if (Math.abs(p.vx) > 0.2 && p.grounded) p.walkCycle += 0.25;
     let legSwing = Math.sin(p.walkCycle) * 8;
 
-    ctx.fillStyle = "#e11d48"; ctx.beginPath(); ctx.moveTo(-2, -30);
-    ctx.quadraticCurveTo(-14 - p.vx * 2.5, -24 + Math.sin(Date.now()*0.01)*3, -18 - p.vx * 3.5, -12);
-    ctx.quadraticCurveTo(-8, -20, -2, -26); ctx.fill();
-
-    ctx.strokeStyle = "#0f172a"; ctx.lineWidth = 4; ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-4 + legSwing, 0);
-    ctx.moveTo(4, -12); ctx.lineTo(4 - legSwing, 0); ctx.stroke();
-
-    ctx.fillStyle = playerColor; ctx.beginPath(); ctx.roundRect(-10, -34, 20, 22, 6); ctx.fill();
-    ctx.fillStyle = "#ffdbac"; ctx.beginPath(); ctx.arc(0, -40, 10, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#0f172a"; ctx.beginPath(); ctx.arc(p.facing * 3, -41, 2.5, 0, Math.PI * 2); ctx.fill();
+    //h
+    drawPlayerSkin(ctx, p, legSwing, selectedSkin, playerColor);
+  //h
+    
     ctx.restore(); 
     ctx.restore(); 
 
