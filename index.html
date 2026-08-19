@@ -1079,9 +1079,9 @@ function gameLoop() {
     if (Math.abs(p.vx) > 0.2 && p.grounded) p.walkCycle += 0.25;
     let legSwing = Math.sin(p.walkCycle) * 8;
 
-    //h
+    
     drawPlayerSkin(ctx, p, legSwing, selectedSkin, playerColor);
-  //h
+  
     
     ctx.restore(); 
     ctx.restore(); 
