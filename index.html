@@ -827,7 +827,7 @@ function gameLoop() {
     const accel = p.grounded ? 0.65 : 0.38; 
     const friction = p.grounded ? 0.82 : 0.91; 
 
-    // Dash Logic
+  
     if (p.isDashing) {
         p.vx = p.facing * 12; p.vy = 0; p.dashTimer--;
         if (p.dashTimer % 3 === 0) createDust(p.x + (p.facing === 1 ? 0 : p.w), p.y + p.h - 10, 2);
