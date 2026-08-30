@@ -206,7 +206,7 @@
         .btn-select { background: #e8ddc7; color: #3a2f22; }
         .btn-selected { background: #c9822a; color: white; box-shadow: 0 4px 10px rgba(201, 130, 42, 0.4);}
 
-        /* ---------- MULTIPLAYER UI ---------- */
+        
         #openMpBtn {
             width: 100%; padding: 12px; border-radius: 10px;
             background: linear-gradient(45deg, #9d8ec9, #7c6f9c); color: #fff;
@@ -359,12 +359,12 @@
     <div class="shop-grid" id="shopGrid"></div>
 </div>
 
-<!-- ============ MODAL MULTIPLAYER ============ -->
+
 <div id="mpModal">
     <div class="mp-card">
         <h2>MULTIPLAYER</h2>
 
-        <!-- Panel pilihan awal -->
+        
         <div id="mpChoicePanel">
             <button class="mp-option-btn" id="showCreateRoomBtn">BUAT ROOM</button>
             <button class="mp-option-btn join-style" id="showJoinRoomBtn">GABUNG KE ROOM</button>
@@ -621,11 +621,8 @@ document.querySelectorAll('.mode-btn').forEach(btn => {
 
 updateMenuCoins();
 
-/* =========================================================
-   ================= MULTIPLAYER =================
-   ========================================================= */
 
-// ID permanen per pemain, dibuat sekali lalu disimpan selamanya
+
 let myId = localStorage.getItem('edward_peer_id');
 if (!myId) {
     myId = 'EDW-' + Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -638,7 +635,7 @@ let isHost = false;
 let isMultiplayer = false;
 let mpMode = 'normal';
 let mpSeed = null;
-let mpRng = null; // dipertahankan untuk kompatibilitas, tidak lagi dipakai sebagai state berjalan
+let mpRng = null;  
 let opponentName = "Lawan";
 let myReady = false, oppReady = false;
 let opponent = {
@@ -649,9 +646,8 @@ let opponent = {
 let myFinalDistance = null, oppFinalDistance = null;
 let mpStateInterval = null;
 let inviteTimeoutId = null;
-let pendingLinkRoom = null; // room id dari parameter link (?room=...) yang menunggu peer siap
+let pendingLinkRoom = null;  
 
-// PRNG deterministik (seed sama di kedua sisi -> dunia game identik)
 function mulberry32(seed) {
     return function() {
         seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
@@ -660,10 +656,7 @@ function mulberry32(seed) {
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
 }
-// Dipakai untuk generate world (platform & musuh) di mode singleplayer saja.
-// Untuk multiplayer, setiap platform punya generator sendiri berbasis index
-// (lihat updateWorldElements) supaya dijamin identik di kedua device meski
-// timing/ukuran layar berbeda -- ini yang memperbaiki bug dunia tidak sinkron.
+
 function rnd() {
     return Math.random();
 }
@@ -678,8 +671,8 @@ function initPeer() {
     peer.on('open', id => {
         document.getElementById('myIdDisplay').innerText = id;
         updateMyLinkDisplay();
-        // Jika halaman dibuka dari link undangan (?room=...), langsung coba gabung
-        // begitu peer siap, tanpa perlu klik apa pun lagi.
+        
+        
         if (pendingLinkRoom && pendingLinkRoom !== myId) {
             let roomToJoin = pendingLinkRoom;
             pendingLinkRoom = null;
@@ -1063,7 +1056,6 @@ function checkMpResult() {
     }
 }
 
-/* ========================================================= */
 
 
 let playerName = "Tanpa Nama";
