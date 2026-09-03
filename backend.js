@@ -603,7 +603,7 @@ function showConfirm(title, message, onConfirm) {
 
 document.getElementById('quitGameBtn').addEventListener('click', () => {
     initAudio();
-    showConfirm('KELUAR DARI PERMAINAN', 'Yakin ingin keluar dari permainan? Progres run saat ini tidak akan tersimpan.', () => {
+    showConfirm('KELUAR DARI PERMAINAN', 'Yakin ingin keluar dari permainan?', () => {
         gameRunning = false;
         cancelAnimationFrame(animId);
         if (mpConn) { try { mpConn.send({ type: 'leave' }); mpConn.close(); } catch (e) {} }
