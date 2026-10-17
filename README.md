@@ -30,3 +30,12 @@ HTML, CSS, JavaScript (Canvas), PeerJS untuk multiplayer, dan di-hosting di Verc
 ## Pengembang
 
 Dibuat oleh **Edward Maulana Nasution**, pengembang EDWARD GAME.
+
+## ⚠️ Hak Cipta & Ketentuan Penggunaan
+
+Seluruh kode sumber, aset, dan mekanisme di dalam repositori **EDWARD GAME** ini dilindungi oleh hak cipta. 
+
+* **DILARANG KERAS** menyalin (clone), memodifikasi, atau mempublikasikan ulang game ini ke platform hosting mana pun untuk tujuan membuat versi kloningan/tiruan.
+* Kode ini dipublikasikan secara terbuka **hanya untuk keperluan portofolio dan pembelajaran pribadi**.
+
+Untuk informasi lebih lengkap mengenai batasan hukum penggunaan kode ini, silakan baca file [LICENSE.txt](./LICENSE.txt).
