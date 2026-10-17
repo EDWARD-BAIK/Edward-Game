@@ -1,6 +1,6 @@
-# Zerivox Parkour
+# EDWARD GAME
 
-**Zerivox Parkour** (sebelumnya EDWARD GAME) adalah game parkur lintas dimensi berbasis web, dikembangkan oleh **Edward Maulana Nasution**.
+**EDWARD GAME** adalah game parkur lintas dimensi berbasis web, dikembangkan oleh **Edward Maulana Nasution**.
 
 🎮 **Main sekarang:** https://edward-game.vercel.app
 
@@ -29,4 +29,4 @@ HTML, CSS, JavaScript (Canvas), PeerJS untuk multiplayer, dan di-hosting di Verc
 
 ## Pengembang
 
-Dibuat oleh **Edward Maulana Nasution**, pengembang Zerivox Parkour.
+Dibuat oleh **Edward Maulana Nasution**, pengembang EDWARD GAME.
