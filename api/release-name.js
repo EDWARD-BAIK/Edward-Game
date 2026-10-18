@@ -1,4 +1,4 @@
-import { guard, body, ID_RE, ipHash, allow, sb } from './_lib.js';
+import { guard, body, ID_RE, ipHash, allow, sb, fail } from './_lib.js';
 
 export default async function handler(req, res) {
   if (!guard(req, res)) return;
@@ -10,7 +10,6 @@ export default async function handler(req, res) {
     if (error) throw error;
     res.status(200).json({ ok: true });
   } catch (e) {
-    console.error('release-name', e);
-    res.status(500).json({ ok: false, reason: 'server' });
+    fail(res, 'release-name', e);
   }
 }
