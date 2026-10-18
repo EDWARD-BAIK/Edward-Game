@@ -1,4 +1,4 @@
-import { guard, body, ID_RE, cleanName, nameOk, ipHash, allow, sb } from './_lib.js';
+import { guard, body, ID_RE, cleanName, nameOk, ipHash, allow, sb, fail } from './_lib.js';
 
 export default async function handler(req, res) {
   if (!guard(req, res)) return;
@@ -16,7 +16,6 @@ export default async function handler(req, res) {
     if (error) throw error;
     res.status(200).json({ ok: data === true, reason: data === true ? 'ok' : 'taken' });
   } catch (e) {
-    console.error('claim-name', e);
-    res.status(500).json({ ok: false, reason: 'server' });
+    fail(res, 'claim-name', e);
   }
 }
