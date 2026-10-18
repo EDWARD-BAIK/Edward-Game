@@ -1,5 +1,5 @@
 // Dipanggil game saat ronde dimulai. Mengembalikan token bertanda tangan berisi waktu mulai dari SERVER.
-import { guard, body, ID_RE, makeToken, ipHash, allow, isBanned } from './_lib.js';
+import { guard, body, ID_RE, makeToken, ipHash, allow, isBanned, fail } from './_lib.js';
 
 export default async function handler(req, res) {
   if (!guard(req, res)) return;
@@ -15,7 +15,6 @@ export default async function handler(req, res) {
 
     res.status(200).json({ ok: true, token: makeToken(id, m) });
   } catch (e) {
-    console.error('start-run', e);
-    res.status(500).json({ ok: false, reason: 'server' });
+    fail(res, 'start-run', e);
   }
 }
