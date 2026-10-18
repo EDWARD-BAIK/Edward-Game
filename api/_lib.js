@@ -102,3 +102,11 @@ export async function ban(id, ip, reason) {
     await sb.from('score_bans').delete().lt('banned_until', new Date(Date.now() - 7 * 86400000).toISOString());
   }
 }
+
+// Catat error; kalau env DEBUG_API=1, sertakan detailnya di respons (HANYA untuk mencari bug, matikan setelahnya).
+export function fail(res, tag, e) {
+  console.error(tag, e);
+  const out = { ok: false, reason: 'server' };
+  if (process.env.DEBUG_API === '1') out.detail = (e && (e.message || e.details || e.hint)) ? [e.code, e.message, e.details, e.hint].filter(Boolean).join(' | ') : String(e);
+  res.status(500).json(out);
+}
