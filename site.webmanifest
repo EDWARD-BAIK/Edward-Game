@@ -1,0 +1,17 @@
+{
+  "name": "EDWARD GAME",
+  "short_name": "EDWARD GAME",
+  "description": "Game parkur lintas dimensi gratis di browser.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#05040c",
+  "theme_color": "#05040c",
+  "lang": "id",
+  "icons": [
+    { "src": "/favicon.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
