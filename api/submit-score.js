@@ -1,5 +1,5 @@
 // Satu-satunya jalan skor masuk ke papan global. Semua dicek di server.
-import { guard, body, ID_RE, readToken, ipHash, allow, sb, MAX_SPEED, TOKEN_TTL_MS, MAX_DIST, BAN_DIST, cleanName, nameOk, isBanned, ban } from './_lib.js';
+import { guard, body, ID_RE, readToken, ipHash, allow, sb, MAX_SPEED, TOKEN_TTL_MS, MAX_DIST, BAN_DIST, cleanName, nameOk, isBanned, ban, fail } from './_lib.js';
 
 export default async function handler(req, res) {
   if (!guard(req, res)) return;
@@ -40,7 +40,6 @@ export default async function handler(req, res) {
     if (data !== 'ok') return res.status(data === 'replay' ? 403 : 409).json({ ok: false, reason: data });
     res.status(200).json({ ok: true });
   } catch (e) {
-    console.error('submit-score', e);
-    res.status(500).json({ ok: false, reason: 'server' });
+    fail(res, 'submit-score', e);
   }
 }
