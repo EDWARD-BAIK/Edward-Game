@@ -2,7 +2,9 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
-export const sb = createClient(process.env.SB_URL, process.env.SB_SERVICE_KEY, {
+// Pakai nilai cadangan agar file ini tidak crash saat variabel lingkungan belum diisi;
+// guard() di bawah lalu membalas JSON {reason:'config'} sehingga penyebabnya terlihat.
+export const sb = createClient(process.env.SB_URL || 'https://placeholder.invalid', process.env.SB_SERVICE_KEY || 'missing-key', {
   auth: { persistSession: false },
 });
 
@@ -106,7 +108,26 @@ export async function ban(id, ip, reason) {
 // Catat error; kalau env DEBUG_API=1, sertakan detailnya di respons (HANYA untuk mencari bug, matikan setelahnya).
 export function fail(res, tag, e) {
   console.error(tag, e);
-  const out = { ok: false, reason: 'server' };
+  const out = { ok: false, reason: 'server', code: (e && e.code) ? String(e.code) : undefined };
   if (process.env.DEBUG_API === '1') out.detail = (e && (e.message || e.details || e.hint)) ? [e.code, e.message, e.details, e.hint].filter(Boolean).join(' | ') : String(e);
   res.status(500).json(out);
+}
+
+// ---- Login Google (identitas = user id Supabase, tidak bisa diganti-ganti) ----
+export async function authUser(req) {
+  const m = String(req.headers.authorization || '').match(/^Bearer\s+(.+)$/i);
+  if (!m) return null;
+  const { data, error } = await sb.auth.getUser(m[1]);   // diverifikasi ke server Supabase Auth
+  const u = data && data.user;
+  if (error || !u || u.is_anonymous) return null;
+  const google = u.app_metadata && u.app_metadata.provider === 'google' &&
+                 (u.identities || []).some(i => i.provider === 'google');
+  if (!google) return null;                               // hanya akun Google asli
+  return { id: u.id };
+}
+
+// Tanggal hari ini zona Jakarta (YYYY-MM-DD), dipakai untuk papan skor harian.
+export function dayJakarta() {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); }
+  catch (e) { return new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10); }
 }
