@@ -13,6 +13,9 @@ const ALLOWED = (process.env.ALLOWED_ORIGINS || 'https://edward-game.vercel.app'
 export const MAX_SPEED = Number(process.env.MAX_SPEED || 40);        // meter/detik (batas fisik game ~46)
 export const TOKEN_TTL_MS = Number(process.env.TOKEN_TTL_MIN || 90) * 60 * 1000;
 export const MAX_DIST = 150000;                                       // 150 km, batas mutlak
+export const BAN_DIST = Number(process.env.BAN_DIST || 100000);      // >= 100 km + mustahil secara waktu => blacklist
+export const BAN_HOURS = Number(process.env.BAN_HOURS || 24);        // lama blacklist
+const BAN_IP = process.env.BAN_IP !== '0';                            // set BAN_IP=0 di Vercel untuk menonaktifkan ban per-IP
 
 export const ID_RE = /^EDW-[A-Z0-9]{6}$/;
 
@@ -76,4 +79,26 @@ export function readToken(tok) {
 
 export function body(req) {
   return (req.body && typeof req.body === 'object') ? req.body : {};
+}
+
+// ---- Blacklist skor global ----
+export async function isBanned(id, ip) {
+  const keys = ['id:' + id];
+  if (BAN_IP) keys.push('ip:' + ip);
+  const { data, error } = await sb.from('score_bans').select('k')
+    .in('k', keys).gt('banned_until', new Date().toISOString()).limit(1);
+  if (error) throw error;
+  return data.length > 0;
+}
+
+export async function ban(id, ip, reason) {
+  const until = new Date(Date.now() + BAN_HOURS * 3600 * 1000).toISOString();
+  const rows = [{ k: 'id:' + id, banned_until: until, reason }];
+  if (BAN_IP) rows.push({ k: 'ip:' + ip, banned_until: until, reason });
+  const { error } = await sb.from('score_bans').upsert(rows, { onConflict: 'k' });
+  if (error) throw error;
+  // bersihkan ban lama sesekali
+  if (Math.random() < 0.05) {
+    await sb.from('score_bans').delete().lt('banned_until', new Date(Date.now() - 7 * 86400000).toISOString());
+  }
 }
