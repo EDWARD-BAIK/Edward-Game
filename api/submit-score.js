@@ -1,17 +1,21 @@
 // Satu-satunya jalan skor masuk ke papan global. Semua dicek di server.
-import { guard, body, ID_RE, readToken, ipHash, allow, sb, MAX_SPEED, TOKEN_TTL_MS, MAX_DIST, BAN_DIST, cleanName, nameOk, isBanned, ban, fail } from './_lib.js';
+import { guard, body, authUser, readToken, ipHash, allow, sb, MAX_SPEED, TOKEN_TTL_MS, MAX_DIST, BAN_DIST, cleanName, nameOk, isBanned, ban, fail, dayJakarta } from './_lib.js';
 
 export default async function handler(req, res) {
   if (!guard(req, res)) return;
   try {
-    const { id, name, dist, token } = body(req);
-    if (!ID_RE.test(String(id))) return res.status(400).json({ ok: false, reason: 'id' });
+    const { name, dist, token } = body(req);
+    const ip = ipHash(req);
+    if (!(await allow('submit:ip:' + ip, 120, 60))) return res.status(429).json({ ok: false, reason: 'rate' });
+
+    const u = await authUser(req);                       // identitas dari login Google, bukan dari body
+    if (!u) return res.status(401).json({ ok: false, reason: 'login' });
+    const id = u.id;
 
     // Token harus asli (ditandatangani server) dan milik id ini, baru ban boleh dijatuhkan.
     const t = readToken(token);
     if (!t || t.i !== id) return res.status(403).json({ ok: false, reason: 'token' });
 
-    const ip = ipHash(req);
     if (await isBanned(id, ip)) return res.status(403).json({ ok: false, reason: 'banned' });
 
     const d = Math.floor(Number(dist));
@@ -33,11 +37,32 @@ export default async function handler(req, res) {
     if (!(await allow('score:id:' + id, 1, 10))) return res.status(429).json({ ok: false, reason: 'rate' });
     if (!(await allow('score:ip:' + ip, 40, 60))) return res.status(429).json({ ok: false, reason: 'rate' });
 
-    const { data, error } = await sb.rpc('submit_score_secure', {
-      p_id: id, p_name: nm, p_dist: d, p_mode: t.m === 'hard' ? 'hard' : 'normal', p_nonce: t.n,
-    });
-    if (error) throw error;
-    if (data !== 'ok') return res.status(data === 'replay' ? 403 : 409).json({ ok: false, reason: data });
+    // Anti-replay: setiap token ronde hanya boleh dipakai sekali.
+    const mode = t.m === 'hard' ? 'hard' : 'normal';
+    const ins = await sb.from('used_nonces').insert({ nonce: t.n });
+    if (ins.error) {
+      if (ins.error.code === '23505') return res.status(403).json({ ok: false, reason: 'replay' });
+      throw ins.error;
+    }
+    try {
+      // Nama akun diperbarui tiap kirim skor, jadi papan skor selalu memakai nama terbaru.
+      const upN = await sb.from('player_names').upsert(
+        { id, name: nm, updated_at: new Date().toISOString() }, { onConflict: 'id' });
+      if (upN.error) throw upN.error;
+
+      const day = dayJakarta();
+      const cur = await sb.from('daily_scores').select('dist')
+        .eq('id', id).eq('day', day).eq('mode', mode).maybeSingle();
+      if (cur.error) throw cur.error;
+      if (!cur.data || d > cur.data.dist) {
+        const upS = await sb.from('daily_scores').upsert({ id, day, mode, dist: d }, { onConflict: 'id,day,mode' });
+        if (upS.error) throw upS.error;
+      }
+    } catch (werr) {
+      // Gagal menyimpan: kembalikan token supaya bisa dicoba lagi.
+      try { await sb.from('used_nonces').delete().eq('nonce', t.n); } catch (e2) {}
+      throw werr;
+    }
     res.status(200).json({ ok: true });
   } catch (e) {
     fail(res, 'submit-score', e);
