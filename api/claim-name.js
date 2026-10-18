@@ -28,10 +28,6 @@ export default async function handler(req, res) {
     // Nama boleh kembar: kalau bentrok dengan akun lain, tetap dianggap berhasil.
     res.status(200).json({ ok: true, reason: r.data === true ? 'ok' : 'dup' });
   } catch (e) {
-    // Nama tidak lagi wajib unik: error database tidak boleh menghalangi pemain menyimpan nama.
-    console.error('claim-name', e);
-    const out = { ok: true, reason: 'soft' };
-    if (process.env.DEBUG_API === '1') out.detail = (e && (e.message || e.details || e.hint)) ? [e.code, e.message, e.details, e.hint].filter(Boolean).join(' | ') : String(e);
-    res.status(200).json(out);
+    fail(res, 'claim-name', e);
   }
 }
