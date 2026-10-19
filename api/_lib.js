@@ -35,13 +35,13 @@ export function nameOk(n) {
   return !BLOCKED.some(w => low.includes(w));
 }
 
-export function guard(req, res) {
+export function guard(req, res, maxLen = 2048) {
   res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') { res.status(405).json({ ok: false, reason: 'method' }); return false; }
   const origin = req.headers.origin;
   if (!origin || !ALLOWED.includes(origin)) { res.status(403).json({ ok: false, reason: 'origin' }); return false; }
   const len = Number(req.headers['content-length'] || 0);
-  if (len > 2048) { res.status(413).json({ ok: false, reason: 'size' }); return false; }
+  if (len > maxLen) { res.status(413).json({ ok: false, reason: 'size' }); return false; }
   if (!SECRET || !process.env.SB_URL || !process.env.SB_SERVICE_KEY) {
     res.status(500).json({ ok: false, reason: 'config' }); return false;
   }
@@ -123,7 +123,7 @@ export async function authUser(req) {
   const google = u.app_metadata && u.app_metadata.provider === 'google' &&
                  (u.identities || []).some(i => i.provider === 'google');
   if (!google) return null;                               // hanya akun Google asli
-  return { id: u.id };
+  return { id: u.id, created: u.created_at };
 }
 
 // Tanggal hari ini zona Jakarta (YYYY-MM-DD), dipakai untuk papan skor harian.
