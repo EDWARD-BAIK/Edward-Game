@@ -3,7 +3,8 @@
 
     var ICE = {
         iceServers: [
-            { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }
+            { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] },
+            { urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turns:openrelay.metered.ca:443?transport=tcp'], username: 'openrelayproject', credential: 'openrelayproject' }
         ]
     };
 
@@ -12,7 +13,8 @@
         peers: {},
         track: null, stream: null,
         micOn: false, busy: false,
-        pending: []
+        pending: [],
+        early: {}
     };
 
     function iconSvg(id, on) {
@@ -62,19 +64,34 @@
         } catch (e) {}
     }
 
+    function playAudio(peer) {
+        if (!peer.audio) return;
+        var p = peer.audio.play();
+        if (p && p.catch) p.catch(function () {});
+    }
+
     function attachRemote(peer, ev) {
-        var stream = (ev.streams && ev.streams[0]) || new MediaStream([ev.track]);
+        if (!peer.stream) peer.stream = new MediaStream();
+        if (ev.streams && ev.streams[0]) peer.stream = ev.streams[0];
+        else if (peer.stream.getTracks().indexOf(ev.track) === -1) peer.stream.addTrack(ev.track);
         if (!peer.audio) {
             var a = document.createElement('audio');
             a.autoplay = true;
+            a.muted = false;
+            a.volume = 1;
             a.setAttribute('playsinline', '');
             a.style.display = 'none';
             document.body.appendChild(a);
             peer.audio = a;
         }
-        peer.audio.srcObject = stream;
-        var p = peer.audio.play();
-        if (p && p.catch) p.catch(function () {  });
+        peer.audio.srcObject = peer.stream;
+        ev.track.onunmute = function () { playAudio(peer); };
+        playAudio(peer);
+    }
+
+    function sdpOf(pc) {
+        var d = pc.localDescription;
+        return d.toJSON ? d.toJSON() : { type: d.type, sdp: d.sdp };
     }
 
     function makeOffer(key, iceRestart) {
@@ -83,25 +100,45 @@
         var pc = peer.pc;
         pc.createOffer(iceRestart ? { iceRestart: true } : undefined)
             .then(function (o) { return pc.setLocalDescription(o); })
-            .then(function () { send(key, 'offer', pc.localDescription.toJSON ? pc.localDescription.toJSON() : { type: pc.localDescription.type, sdp: pc.localDescription.sdp }); })
+            .then(function () { send(key, 'offer', sdpOf(pc)); })
             .catch(function () {});
+    }
+
+    function bindSender(peer, tr) {
+        peer.sender = tr.sender;
+        if (S.track) { try { tr.sender.replaceTrack(S.track); } catch (e) {} }
+    }
+
+    function flushIce(key) {
+        var peer = S.peers[key];
+        if (!peer) return;
+        clearTimeout(peer.iceT);
+        peer.iceT = null;
+        if (!peer.iceBuf.length) return;
+        var list = peer.iceBuf;
+        peer.iceBuf = [];
+        send(key, 'ice', list);
     }
 
     function createPeer(key) {
         if (S.peers[key] || !S.ch) return S.peers[key];
         var pc = new RTCPeerConnection(ICE);
-        var peer = { pc: pc, audio: null, initiator: S.me < key, queue: [], restartT: null };
+        var peer = { pc: pc, audio: null, stream: null, sender: null, initiator: S.me < key, queue: S.early[key] || [], iceBuf: [], iceT: null, restartT: null, warned: false };
+        delete S.early[key];
         S.peers[key] = peer;
 
-        var tr = pc.addTransceiver('audio', { direction: 'sendrecv' });
-        peer.sender = tr.sender;
-        if (S.track) { try { tr.sender.replaceTrack(S.track); } catch (e) {} }
+        if (peer.initiator) bindSender(peer, pc.addTransceiver('audio', { direction: 'sendrecv' }));
 
-        pc.onicecandidate = function (e) { if (e.candidate) send(key, 'ice', e.candidate.toJSON ? e.candidate.toJSON() : e.candidate); };
+        pc.onicecandidate = function (e) {
+            if (!e.candidate) { flushIce(key); return; }
+            peer.iceBuf.push(e.candidate.toJSON ? e.candidate.toJSON() : e.candidate);
+            if (!peer.iceT) peer.iceT = setTimeout(function () { flushIce(key); }, 120);
+        };
         pc.ontrack = function (e) { attachRemote(peer, e); };
         pc.onconnectionstatechange = function () {
             var st = pc.connectionState;
-            if (st === 'connected') { clearTimeout(peer.restartT); return; }
+            if (st === 'connected') { clearTimeout(peer.restartT); peer.warned = false; return; }
+            if (st === 'failed' && !peer.warned) { peer.warned = true; toast('Koneksi suara gagal, jaringan mungkin memblokir.'); }
             if ((st === 'failed' || st === 'disconnected') && peer.initiator && S.peers[key] === peer) {
                 clearTimeout(peer.restartT);
                 peer.restartT = setTimeout(function () {
@@ -119,6 +156,7 @@
         if (!peer) return;
         delete S.peers[key];
         clearTimeout(peer.restartT);
+        clearTimeout(peer.iceT);
         try { peer.pc.onicecandidate = peer.pc.ontrack = peer.pc.onconnectionstatechange = null; peer.pc.close(); } catch (e) {}
         if (peer.audio) {
             try { peer.audio.pause(); peer.audio.srcObject = null; peer.audio.remove(); } catch (e) {}
@@ -138,17 +176,31 @@
             if (!peer) return;
             var pc = peer.pc;
             pc.setRemoteDescription(p.data)
-                .then(function () { flushQueue(peer); return pc.createAnswer(); })
+                .then(function () {
+                    if (!peer.sender) {
+                        var trs = pc.getTransceivers(), tr = null;
+                        for (var i = 0; i < trs.length; i++) {
+                            if (trs[i].receiver && trs[i].receiver.track && trs[i].receiver.track.kind === 'audio') { tr = trs[i]; break; }
+                        }
+                        if (tr) { tr.direction = 'sendrecv'; bindSender(peer, tr); }
+                    }
+                    flushQueue(peer);
+                    return pc.createAnswer();
+                })
                 .then(function (a) { return pc.setLocalDescription(a); })
-                .then(function () { send(p.from, 'answer', pc.localDescription.toJSON ? pc.localDescription.toJSON() : { type: pc.localDescription.type, sdp: pc.localDescription.sdp }); })
+                .then(function () { send(p.from, 'answer', sdpOf(pc)); })
                 .catch(function () {});
         } else if (p.type === 'answer') {
             if (!peer) return;
             peer.pc.setRemoteDescription(p.data).then(function () { flushQueue(peer); }).catch(function () {});
         } else if (p.type === 'ice') {
-            if (!peer) return;
-            if (peer.pc.remoteDescription && peer.pc.remoteDescription.type) peer.pc.addIceCandidate(p.data).catch(function () {});
-            else peer.queue.push(p.data);
+            var list = Array.isArray(p.data) ? p.data : [p.data];
+            if (!peer) { S.early[p.from] = (S.early[p.from] || []).concat(list); return; }
+            if (peer.pc.remoteDescription && peer.pc.remoteDescription.type) {
+                list.forEach(function (c) { peer.pc.addIceCandidate(c).catch(function () {}); });
+            } else {
+                peer.queue = peer.queue.concat(list);
+            }
         }
     }
 
@@ -209,10 +261,10 @@
     function unlockAudio() {
         Object.keys(S.peers).forEach(function (k) {
             var a = S.peers[k].audio;
-            if (a && a.paused && a.srcObject) { var p = a.play(); if (p && p.catch) p.catch(function () {}); }
+            if (a && a.paused && a.srcObject) playAudio(S.peers[k]);
         });
     }
-    document.addEventListener('pointerdown', unlockAudio, { passive: true });
+    ['pointerdown', 'touchend', 'click', 'keydown'].forEach(function (ev) { document.addEventListener(ev, unlockAudio, { passive: true }); });
 
     var API = {
         join: function (ch, me) {
@@ -236,7 +288,7 @@
             Object.keys(S.peers).forEach(closePeer);
             if (S.stream) { S.stream.getTracks().forEach(function (t) { try { t.onended = null; t.stop(); } catch (e) {} }); }
             S.stream = null; S.track = null; S.micOn = false;
-            S.ch = null; S.me = null; S.pending = []; S.busy = false;
+            S.ch = null; S.me = null; S.pending = []; S.early = {}; S.busy = false;
             showHud(false);
             renderButtons();
         },
