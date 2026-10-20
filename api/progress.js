@@ -7,6 +7,17 @@ const LEGACY_MAX_COINS = Number(process.env.LEGACY_MAX_COINS || 20000);
 const LEGACY_MAX_DIST = Number(process.env.LEGACY_MAX_DIST || 30000);
 const COIN_CEIL = 1000000000;
 const MP_WINS_PER_DAY = 10;
+const RANK_METERS_PER_POINT = 20;
+const RANK_HARD_BONUS = 1.5;
+
+function rankGain(dist, mode) {
+  const base = Math.floor(dist / RANK_METERS_PER_POINT);
+  return mode === 'hard' ? Math.floor(base * RANK_HARD_BONUS) : base;
+}
+
+function rankMonth() {
+  return dayJakarta().slice(0, 7);
+}
 
 const ACH = [
   { id: 'first_steps', reward: 20, ok: c => c.best >= 100 },
@@ -207,7 +218,12 @@ export default async function handler(req, res) {
       const nm = await sb.from('player_names').select('name').eq('id', uid).maybeSingle();
       const st = view(row);
       st.name = (nm.data && nm.data.name) || '';
-      return res.status(200).json({ ok: true, state: st, granted: granted });
+      let rank = null;
+      try {
+        const rk = await sb.rpc('rank_me', { p_user: uid });
+        if (!rk.error && typeof rk.data === 'number') rank = { m: rankMonth(), p: rk.data };
+      } catch (e) {}
+      return res.status(200).json({ ok: true, state: st, granted: granted, rank: rank });
     }
 
     if (act === 'buy') {
@@ -305,7 +321,15 @@ export default async function handler(req, res) {
         try { await sb.from('used_nonces').delete().eq('nonce', nonce); } catch (e2) {}
         throw e;
       }
-      return res.status(200).json({ ok: true, state: view(out.row), granted: granted });
+      let rank = null;
+      try {
+        const add = await sb.rpc('rank_add', { p_user: uid, p_points: rankGain(d, mode) });
+        if (add.error) console.error('rank_add', add.error);
+        else rank = { m: rankMonth(), p: add.data };
+      } catch (e) {
+        console.error('rank_add', e);
+      }
+      return res.status(200).json({ ok: true, state: view(out.row), granted: granted, rank: rank });
     }
 
     if (act === 'gifts') {
