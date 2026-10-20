@@ -333,7 +333,7 @@ export default async function handler(req, res) {
     }
 
     if (act === 'gifts') {
-      const g = await sb.from('player_gifts').select('id,title,coins,created_at')
+      const g = await sb.from('player_gifts').select('id,title,coins,rank_points,created_at')
         .eq('user_id', uid).is('claimed_at', null).order('id', { ascending: false }).limit(50);
       if (g.error) throw g.error;
       return res.status(200).json({ ok: true, gifts: g.data || [] });
@@ -343,18 +343,29 @@ export default async function handler(req, res) {
       const gid = Math.floor(Number(b.id));
       if (!Number.isFinite(gid) || gid <= 0) return res.status(400).json({ ok: false, reason: 'id' });
       const taken = await sb.from('player_gifts').update({ claimed_at: new Date().toISOString() })
-        .eq('id', gid).eq('user_id', uid).is('claimed_at', null).select('coins');
+        .eq('id', gid).eq('user_id', uid).is('claimed_at', null).select('coins,rank_points');
       if (taken.error) throw taken.error;
       if (!taken.data || !taken.data.length) return res.status(200).json({ ok: false, reason: 'gone' });
       const amount = taken.data[0].coins;
+      const rankPts = taken.data[0].rank_points || 0;
       let out;
+      let rank = null;
       try {
-        out = await mutate(uid, r => ({ patch: { coins: Math.min(r.coins + amount, COIN_CEIL) } }));
+        if (rankPts > 0) {
+          const add = await sb.rpc('rank_add', { p_user: uid, p_points: rankPts });
+          if (add.error) throw add.error;
+          rank = { m: rankMonth(), p: add.data };
+        }
+        out = amount > 0
+          ? await mutate(uid, r => ({ patch: { coins: Math.min(r.coins + amount, COIN_CEIL) } }))
+          : { row: await loadRow(uid) };
       } catch (e) {
-        try { await sb.from('player_gifts').update({ claimed_at: null }).eq('id', gid).eq('user_id', uid); } catch (e2) {}
+        if (!rank) {
+          try { await sb.from('player_gifts').update({ claimed_at: null }).eq('id', gid).eq('user_id', uid); } catch (e2) {}
+        }
         throw e;
       }
-      return res.status(200).json({ ok: true, amount: amount, state: view(out.row), granted: granted });
+      return res.status(200).json({ ok: true, amount: amount, rankPoints: rankPts, rank: rank, state: view(out.row), granted: granted });
     }
 
     if (act === 'reset') {
